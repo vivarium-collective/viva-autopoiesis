@@ -127,7 +127,7 @@ def _maybe_emitter(state, run_id, db_file):
         return state, None
     emit = {"membrane": "float", "containment": "float", "global_time": "float"}
     try:
-        from vivarium_dashboard.lib.composite_runs import inject_sqlite_emitter
+        from vivarium_workbench.lib.composite_runs import inject_sqlite_emitter
         state = inject_sqlite_emitter(state, run_id=run_id, db_file=db_file)
         node = state["sqlite_emitter"]
         node["config"]["emit"] = dict(emit)

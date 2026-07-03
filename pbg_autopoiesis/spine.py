@@ -580,7 +580,7 @@ def _apply_meter(study_path, measures, context, findings_fn, run_name, composite
 def _persist_baseline(sim_fn, run_id, db_path, **kw):
     """Step the baseline composite once through the engine WITH a SQLite emitter so
     the run persists a real trajectory in ``<study>/runs.db`` (the canonical
-    ``vivarium_dashboard.lib.composite_runs.inject_sqlite_emitter`` path, with a
+    ``vivarium_workbench.lib.composite_runs.inject_sqlite_emitter`` path, with a
     manual SQLiteEmitter fallback inside the processes module). Returns
     ``("sqlite", db_path)`` on success or ``(None, None)`` if persistence raised —
     the spine still records the computed measures, just without an emitter stamp.
@@ -623,7 +623,7 @@ def _persist_loop(run_id, db_path, *, supply_rate=2.0, steps=160):
         emit = {k: "float" for k in
                 ("nutrient", "precursor", "lipid", "membrane_lipids", "volume", "global_time")}
         try:
-            from vivarium_dashboard.lib.composite_runs import inject_sqlite_emitter
+            from vivarium_workbench.lib.composite_runs import inject_sqlite_emitter
             state = inject_sqlite_emitter(state, run_id=run_id, db_file=db)
             node = state["sqlite_emitter"]
             node["config"]["emit"] = dict(emit)
