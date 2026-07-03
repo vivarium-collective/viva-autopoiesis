@@ -8,7 +8,7 @@
 //
 // Sub-project #2 (narrative export): adds snapshot mode — when __DASH_CONFIG__.mode
 // is "snapshot", the URL helpers point at the static JSON files in the bundle
-// (api/study/<slug>.json, api/iset/<id>.json, api/workspace.json) instead of
+// (api/study/<slug>.json, api/investigation/<id>.json, api/workspace.json) instead of
 // the live /api/* endpoints.
 //
 // Usage:
@@ -34,9 +34,26 @@
   }
 
   async function _get(url) {
-    var r = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!r.ok) throw new Error("fetch " + url + " -> " + r.status);
-    return r.json();
+    // GitHub Pages / Fastly returns 429 (occasionally 503) under per-IP rate
+    // limiting when the hosted snapshot fires its burst of parallel /api/*.json
+    // fetches on a cold load. These are transient, so back off and retry rather
+    // than surfacing a hard "fetch … -> 429" error to read-only viewers.
+    var maxRetries = 4;
+    for (var attempt = 0; ; attempt++) {
+      var r = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (r.ok) return r.json();
+      if ((r.status === 429 || r.status === 503) && attempt < maxRetries) {
+        var retryAfter = parseFloat(r.headers.get("retry-after"));
+        // Fastly often sends Retry-After: 0 (useless) — fall back to capped
+        // exponential backoff with jitter so retries don't stampede in lockstep.
+        var waitMs = retryAfter > 0
+          ? retryAfter * 1000
+          : Math.min(8000, 400 * Math.pow(2, attempt)) + Math.floor(Math.random() * 300);
+        await new Promise(function (res) { setTimeout(res, waitMs); });
+        continue;
+      }
+      throw new Error("fetch " + url + " -> " + r.status);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -58,8 +75,8 @@
 
   function _isetUrl(id) {
     return cfg().mode === "snapshot"
-      ? _base() + "/api/iset/" + encodeURIComponent(id) + ".json"
-      : "/api/iset/" + encodeURIComponent(id);
+      ? _base() + "/api/investigation/" + encodeURIComponent(id) + ".json"
+      : "/api/investigation/" + encodeURIComponent(id);
   }
 
   function _workspaceUrl() {
@@ -70,8 +87,8 @@
 
   function _isetListUrl() {
     return cfg().mode === "snapshot"
-      ? _base() + "/api/iset-list.json"
-      : "/api/iset-list";
+      ? _base() + "/api/investigation-summaries.json"
+      : "/api/investigation-summaries";
   }
 
   function _inputsUrl(slug) {
@@ -133,9 +150,38 @@
       : "/api/visualization-classes";
   }
 
+  function _savedVisualizationsUrl() {
+    return cfg().mode === "snapshot"
+      ? _base() + "/api/saved-visualizations.json"
+      : "/api/saved-visualizations";
+  }
+
+  function _referencesBibUrl() {
+    return cfg().mode === "snapshot"
+      ? _base() + "/api/references-bib.json"
+      : "/api/references-bib";
+  }
+
   var DataSource = {
     /** Return the current source config (default: local-server). */
     config: cfg,
+
+    /** Return the configured base path ("" in local mode). */
+    basePath: _base,
+
+    /**
+     * Return the URL for the saved-visualizations payload (Analyses gallery).
+     * Local mode:    /api/saved-visualizations
+     * Snapshot mode: <base>/api/saved-visualizations.json from the static bundle
+     */
+    savedVisualizationsUrl: _savedVisualizationsUrl,
+
+    /**
+     * Return the URL for the parsed papers.bib payload (References cards).
+     * Local mode:    /api/references-bib
+     * Snapshot mode: <base>/api/references-bib.json from the static bundle
+     */
+    referencesBibUrl: _referencesBibUrl,
 
     /**
      * Load the study-detail spec for the given slug.
@@ -160,8 +206,8 @@
 
     /**
      * Load the investigation (iset) detail for the given id.
-     * Local mode:    fetches GET /api/iset/<id>
-     * Snapshot mode: fetches /api/iset/<id>.json from the static bundle
+     * Local mode:    fetches GET /api/investigation/<id>
+     * Snapshot mode: fetches /api/investigation/<id>.json from the static bundle
      * @param {string} id - the investigation id / slug.
      */
     async loadInvestigation(id) {
@@ -179,8 +225,8 @@
 
     /**
      * Load the investigations summary list.
-     * Local mode:    fetches GET /api/iset-list
-     * Snapshot mode: fetches /api/iset-list.json from the static bundle
+     * Local mode:    fetches GET /api/investigation-summaries
+     * Snapshot mode: fetches /api/investigation-summaries.json from the static bundle
      */
     async loadIsetList() {
       return _get(_isetListUrl());

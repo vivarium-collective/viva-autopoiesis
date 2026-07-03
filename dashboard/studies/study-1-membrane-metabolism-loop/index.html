@@ -96,7 +96,7 @@
 
 
 <style>
-.spine-summary{margin:6px 0 14px 0;border:1px solid #cbd5e1;border-left-width:5px;border-radius:6px;background:#f8fafc;font-size:0.9em}
+.spine-summary{margin:8px 0 0 0;border:1px solid #cbd5e1;border-left-width:5px;border-bottom:none;border-radius:6px 6px 0 0;background:#f8fafc;font-size:0.9em}
 .spine-summary:empty{display:none}
 .spine-summary-head{padding:7px 14px 4px 14px;font-size:0.78em;text-transform:uppercase;letter-spacing:0.05em;color:#475569;font-weight:700}
 .spine-row{display:flex;align-items:baseline;gap:10px;padding:4px 14px;border-top:1px solid #eef2f6}
@@ -112,18 +112,23 @@
 <div id="spine-summary" class="spine-summary" data-slug="study-1-membrane-metabolism-loop"></div>
 
 <nav class="study-tabs" aria-label="Study sections">
-  <button class="study-tab active" data-kind="overview"      onclick="_setStudyTab('overview')">Overview</button>
-  
-  <button class="study-tab"        data-kind="build"         onclick="_setStudyTab('build')">Build</button>
-  
-  
-  <button class="study-tab"        data-kind="simulations"   onclick="_setStudyTab('simulations')">Simulations</button>
-  <button class="study-tab"        data-kind="observables"   onclick="_setStudyTab('observables')">Readouts</button>
-  
-  <button class="study-tab"        data-kind="runs"          onclick="_setStudyTab('runs')">Runs</button>
-  <button class="study-tab"        data-kind="tests"         onclick="_setStudyTab('tests')">Tests</button>
-  <button class="study-tab"        data-kind="visualizations" onclick="_setStudyTab('visualizations')">Visualizations</button>
-  <button class="study-tab"        data-kind="conclusions"   onclick="_setStudyTab('conclusions')">Decide</button>
+  <div class="study-pillars">
+    <button class="study-pillar active" data-pillar="understand" onclick="_setStudyPillar('understand')">Overview</button>
+    <button class="study-pillar"        data-pillar="inquire"    onclick="_setStudyPillar('inquire')">Hypotheses</button>
+    <button class="study-pillar"        data-pillar="compose"    onclick="_setStudyPillar('compose')">Model</button>
+    <button class="study-pillar"        data-pillar="simulate"   onclick="_setStudyPillar('simulate')">Simulations</button>
+    <button class="study-pillar"        data-pillar="visualize"  onclick="_setStudyPillar('visualize')">Results</button>
+    <button class="study-pillar"        data-pillar="data"       onclick="_setStudyPillar('data')">Exports</button>
+  </div>
+  <div class="study-subnav" id="study-subnav">
+    <button class="study-tab active" data-kind="overview" data-pillar="understand" onclick="_setStudyTab('overview')">Overview</button>
+    <button class="study-tab"        data-kind="tests"        data-pillar="inquire"  onclick="_setStudyTab('tests')">Tests</button>
+    <button class="study-tab"        data-kind="conclusions"  data-pillar="inquire"  onclick="_setStudyTab('conclusions')">Decide</button>
+    <button class="study-tab" data-kind="compose" data-pillar="compose" onclick="_setStudyTab('compose')">Model</button>
+    <button class="study-tab" data-kind="simulate" data-pillar="simulate" onclick="_setStudyTab('simulate')">Simulations</button>
+    <button class="study-tab" data-kind="visualize" data-pillar="visualize" onclick="_setStudyTab('visualize')">Results</button>
+    <button class="study-tab" data-kind="data" data-pillar="data" onclick="_setStudyTab('data')">Exports</button>
+  </div>
 </nav>
 <style>
 .phase-pill{display:inline-block;font-size:0.78em;padding:2px 10px;border-radius:9999px;margin-right:6px;font-weight:500;background:#e0e7ff;color:#3730a3}
@@ -225,19 +230,15 @@
   <div class="study-overview">
 
     
+    <h2 class="overview-label">Summary</h2>
+
     
     
     <div class="overview-section narrative-card" data-narrative-card="report">
       <h2 class="overview-label">📋 Report — executive summary
         <span class="narrative-card-hint">(top-of-page panel for reviewers)</span>
       </h2>
-      <p class="muted" style="margin:0 0 10px 0;font-size:0.85em">
-        Verdict + main insight are <strong>computed</strong> from canonical
-        fields (gate evaluator · findings) and shown read-only; the report
-        also derives <code>title</code>, <code>objective</code>, and
-        <code>key_metrics</code> from canonical content. Author only the
-        reviewer-facing notes below (confidence · evidence quality · caveat).
-      </p>
+      <p class="muted" style="margin:0 0 10px 0;font-size:0.85em">Author the reviewer-facing notes below; Verdict and main insight are computed from the gate evaluator and findings.</p>
       <div class="narrative-grid">
         
         <label class="narrative-row">
@@ -280,141 +281,51 @@
                     placeholder="Multi-sentence: what the runs + tests demonstrated."></textarea>
         </label>
       </div>
-      
-      <div style="margin-top:10px">
-        <button type="button" class="btn-view-skeptic action-btn"
-                style="font-size:0.85em" data-study="study-1-membrane-metabolism-loop">🕵 View as skeptic</button>
-        <span class="muted small" style="margin-left:8px">opens the report reordered for a skeptical reviewer</span>
-      </div>
     </div>
 
     
-    
-    <div class="overview-section" id="epistemic-debts-panel">
-      <h2 class="overview-label">🧾 Open epistemic debts
-        <span class="narrative-card-hint">(negative knowledge — what this study has not yet established)</span>
+    <div class="overview-section biology-summary-callout">
+      <h2 class="biology-glance-label">Biology — what this study is about
+        <span class="narrative-card-hint">(optional override — derived from findings when blank)</span>
       </h2>
-      <p class="muted" style="margin:0 0 8px 0;font-size:0.85em">
-        Untested claims, absent controls, uncalibrated metrics, un-excluded
-        alternatives, unexplored regions, and stale visuals — harvested from the
-        rigor scorecard + freshness signals.
-      </p>
-      <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
-        
-        
-        
-        
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
-          <span style="padding:1px 8px;border-radius:9999px;background:#fef9c3;color:#854d0e;font-weight:600;font-size:0.72em;white-space:nowrap">medium</span>
-          <div>
-            <strong style="color:#1e293b">alternative-not-excluded</strong>
-            <code style="font-size:0.82em">alternatives</code>
-            <div style="color:#475569;font-size:0.9em;margin-top:1px">1 alternative(s) listed but none excluded yet</div>
-          </div>
-        </div>
-        
-        
-        
-        
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
-          <span style="padding:1px 8px;border-radius:9999px;background:#f1f5f9;color:#475569;font-weight:600;font-size:0.72em;white-space:nowrap">low</span>
-          <div>
-            <strong style="color:#1e293b">region-unexplored</strong>
-            <code style="font-size:0.82em">remaining_uncertainties</code>
-            <div style="color:#475569;font-size:0.9em;margin-top:1px">Closure is shown at a single deterministic parameter point — robustness to supply_rate / decay is not yet demonstrated (a parameter sweep, not seeds, since the loop is an ODE).</div>
-          </div>
-        </div>
-        
-        
-        
-        
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
-          <span style="padding:1px 8px;border-radius:9999px;background:#f1f5f9;color:#475569;font-weight:600;font-size:0.72em;white-space:nowrap">low</span>
-          <div>
-            <strong style="color:#1e293b">region-unexplored</strong>
-            <code style="font-size:0.82em">remaining_uncertainties</code>
-            <div style="color:#475569;font-size:0.9em;margin-top:1px">The closure metric is not calibrated: no system that SHOULD fail closure has been run, so its discriminative power is unestablished (the reviewers&#39; circularity concern).</div>
-          </div>
-        </div>
-        
+      <textarea class="biology-prose narrative-input narrative-textarea" rows="4"
+                data-narrative-path="biological_summary"
+                placeholder="Multi-paragraph plain-English mechanism narrative — the 'textbook write-up' a non-modeler would read."></textarea>
+      
+      <div class="biology-derived-preview muted small" style="margin-top:6px;padding:8px 12px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:4px">
+        <em>Derived from findings (shown in the report when no override is set):</em>
+        <p style="margin:4px 0 0">The network is operationally closed: it self-produces 5/5 required types (lipid, membrane_lipids, nutrient, precursor, volume); only nutrient crosses the boundary. The cell produces its own boundary. Interface closure is CLOSED (the ports cover the requirements) and semantic closure is CLOSED (every self-produced type carries non-zero flux under the fed trajectory).</p><p style="margin:4px 0 0">The identity is precarious — a process, not a container. Fed, the self-produced boundary grows and is maintained (volume 2.97 → 9.37); starved of nutrient it dissipates (2.97 → 0.329). It persists only through continuous self-production.</p>
       </div>
+      
     </div>
+
     
+    <h2 class="overview-label">Question &amp; approach</h2>
 
-    <div class="biology-glance">
-      
-      <div class="biology-summary-callout">
-        <h2 class="biology-glance-label">Biology — what this study is about
-          <span class="narrative-card-hint">(optional override — derived from findings when blank)</span>
-        </h2>
-        <textarea class="biology-prose narrative-input narrative-textarea" rows="4"
-                  data-narrative-path="biological_summary"
-                  placeholder="Multi-paragraph plain-English mechanism narrative — the 'textbook write-up' a non-modeler would read."></textarea>
-        
-        <div class="biology-derived-preview muted small" style="margin-top:6px;padding:8px 12px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:4px">
-          <em>Derived from findings (shown in the report when no override is set):</em>
-          <p style="margin:4px 0 0">The network is operationally closed: it self-produces 5/5 required types (lipid, membrane_lipids, nutrient, precursor, volume); only nutrient crosses the boundary. The cell produces its own boundary. Interface closure is CLOSED (the ports cover the requirements) and semantic closure is CLOSED (every self-produced type carries non-zero flux under the fed trajectory).</p><p style="margin:4px 0 0">The identity is precarious — a process, not a container. Fed, the self-produced boundary grows and is maintained (volume 2.97 → 9.37); starved of nutrient it dissipates (2.97 → 0.329). It persists only through continuous self-production.</p>
-        </div>
-        
-      </div>
-
-      
-      
-      
-      
-      
-      
-      
-      
-      <div class="study-card">
-        <h2 class="biology-glance-label">Study card
-          <span class="narrative-card-hint">(derived from canonical fields when a slot is blank)</span>
-        </h2>
-        <table class="study-card-table">
-          <tr><th>Goal</th><td>
-            <input type="text" class="narrative-input narrative-card-input"
-                   data-narrative-path="study_card.goal"
-                   value=""
-                   placeholder="Assemble the smallest precarious, self-bounding identity by composing a toy metabolism,
+    
+    
+    <div class="overview-section">
+      <div id="question-text" class="overview-prose" data-editable="true"
+           data-field="question"
+           data-placeholder="(what research question is this study asking?)"></div>
+    </div>
+    <div class="overview-section">
+      <div id="hypothesis-text" class="overview-prose" data-editable="true"
+           data-field="hypothesis"
+           data-placeholder="(predicted outcome)"></div>
+    </div>
+    <div class="overview-section">
+      <div id="objective-text" class="overview-prose" data-editable="true" data-field="objective">Assemble the smallest precarious, self-bounding identity by composing a toy metabolism,
 a membrane that grows from its own lipids (and decays without them), and a boundary whose
 volume is DERIVED from the membrane — then verify, with the autopoiesis meter, that the
 network is operationally closed (modulo nutrient) and that the identity is precarious:
 fed it persists, starved it dissipates.
-">
-          </td></tr>
-          <tr><th>Mechanism</th><td>
-            <input type="text" class="narrative-input narrative-card-input"
-                   data-narrative-path="study_card.mechanism"
-                   value=""
-                   placeholder="The network is operationally closed: it self-produces 5/5 required types (lipid, membrane_lipids, nutrient, precursor, volume); only nutrient crosses the boundary. The cell produces its own boundary. Interface closure is CLOSED (the ports cover the requirements) and semantic closure is CLOSED (every self-produced type carries non-zero flux under the fed trajectory).">
-          </td></tr>
-          <tr><th>Why before next</th><td>
-            <input type="text" class="narrative-input narrative-card-input"
-                   data-narrative-path="study_card.why_before_next"
-                   value=""
-                   placeholder="Operational closure CLOSED (gap = ∅, boundary = {nutrient}) AND precariousness holds
-(the self-produced boundary collapses when nutrient is withdrawn).
-">
-          </td></tr>
-          <tr><th>Expected result</th><td>
-            <input type="text" class="narrative-input narrative-card-input"
-                   data-narrative-path="study_card.expected_result"
-                   value=""
-                   placeholder="Literature-stated success criterion.">
-          </td></tr>
-          <tr><th>Main expert question</th><td>
-            <input type="text" class="narrative-input narrative-card-input"
-                   data-narrative-path="study_card.main_expert_question"
-                   value=""
-                   placeholder="The one question this study most wants an expert to answer.">
-          </td></tr>
-        </table>
-      </div>
-
-      
-
-      
+</div>
     </div>
+    
+
+    
+    <h2 class="overview-label">Findings &amp; open debts</h2>
 
     
     <div class="overview-section findings-section">
@@ -496,130 +407,150 @@ fed it persists, starved it dissipates.
 
     
     
-    
-    
-    
-    <div class="overview-section">
-      <h2 class="overview-label">Question</h2>
-      <div id="question-text" class="overview-prose" data-editable="true"
-           data-field="question"
-           data-placeholder="(what research question is this study asking?)"></div>
+    <div class="overview-section" id="epistemic-debts-panel">
+      <h2 class="overview-label">🧾 Open epistemic debts
+        <span class="narrative-card-hint">(negative knowledge — what this study has not yet established)</span>
+      </h2>
+      <p class="muted" style="margin:0 0 8px 0;font-size:0.85em">
+        Untested claims, absent controls, uncalibrated metrics, un-excluded
+        alternatives, unexplored regions, and stale visuals — harvested from the
+        rigor scorecard + freshness signals.
+      </p>
+      <div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+        
+        
+        
+        
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
+          <span style="padding:1px 8px;border-radius:9999px;background:#fef9c3;color:#854d0e;font-weight:600;font-size:0.72em;white-space:nowrap">medium</span>
+          <div>
+            <strong style="color:#1e293b">alternative-not-excluded</strong>
+            <code style="font-size:0.82em">alternatives</code>
+            <div style="color:#475569;font-size:0.9em;margin-top:1px">1 alternative(s) listed but none excluded yet</div>
+          </div>
+        </div>
+        
+        
+        
+        
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
+          <span style="padding:1px 8px;border-radius:9999px;background:#f1f5f9;color:#475569;font-weight:600;font-size:0.72em;white-space:nowrap">low</span>
+          <div>
+            <strong style="color:#1e293b">region-unexplored</strong>
+            <code style="font-size:0.82em">remaining_uncertainties</code>
+            <div style="color:#475569;font-size:0.9em;margin-top:1px">Closure is shown at a single deterministic parameter point — robustness to supply_rate / decay is not yet demonstrated (a parameter sweep, not seeds, since the loop is an ODE).</div>
+          </div>
+        </div>
+        
+        
+        
+        
+        <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1f5f9">
+          <span style="padding:1px 8px;border-radius:9999px;background:#f1f5f9;color:#475569;font-weight:600;font-size:0.72em;white-space:nowrap">low</span>
+          <div>
+            <strong style="color:#1e293b">region-unexplored</strong>
+            <code style="font-size:0.82em">remaining_uncertainties</code>
+            <div style="color:#475569;font-size:0.9em;margin-top:1px">The closure metric is not calibrated: no system that SHOULD fail closure has been run, so its discriminative power is unestablished (the reviewers&#39; circularity concern).</div>
+          </div>
+        </div>
+        
+      </div>
     </div>
-
-    <div class="overview-section">
-      <h2 class="overview-label">Hypothesis</h2>
-      <div id="hypothesis-text" class="overview-prose" data-editable="true"
-           data-field="hypothesis"
-           data-placeholder="(predicted outcome)"></div>
-    </div>
-
-    <div class="overview-section">
-      <h2 class="overview-label">Status</h2>
-      <select id="status-select" data-field="status" class="overview-status-select">
-        <option value="planned"     >planned</option>
-        <option value="draft"       >draft</option>
-        <option value="in-progress" >in-progress</option>
-        <option value="running"     >running</option>
-        <option value="ran"         >ran</option>
-        <option value="completed"   selected>completed</option>
-        <option value="complete"    >complete</option>
-        <option value="archived"    >archived</option>
-      </select>
-    </div>
-
-    <div class="overview-section">
-      <h2 class="overview-label">Objective</h2>
-      <div id="objective-text" class="overview-prose" data-editable="true" data-field="objective">Assemble the smallest precarious, self-bounding identity by composing a toy metabolism,
-a membrane that grows from its own lipids (and decays without them), and a boundary whose
-volume is DERIVED from the membrane — then verify, with the autopoiesis meter, that the
-network is operationally closed (modulo nutrient) and that the identity is precarious:
-fed it persists, starved it dissipates.
-</div>
-    </div>
-    
     
 
     
     <details class="overview-section">
-      <summary class="overview-label">Pipeline gate</summary>
-      <p class="muted" style="margin: 0 0 8px 0;font-size:0.88em">
-        Each study is a model-building gate: it answers <em>"Can we safely build the next layer?"</em>
-      </p>
+      <summary class="overview-label">Plan &amp; provenance</summary>
+
       
-      <div style="margin-bottom:6px"><strong>Prerequisites:</strong> <em class="muted">none (root study)</em></div>
-      
-      
-      <div style="margin-bottom:6px"><strong>Enables:</strong>
-        <code>{&#39;study&#39;: &#39;study-2-real-metabolism&#39;, &#39;condition&#39;: &#39;tests-passed&#39;}</code>
-      </div>
-      
-      
-      <div><strong>Proceed when:</strong> <span class="muted">Operational closure CLOSED (gap = ∅, boundary = {nutrient}) AND precariousness holds
+      <div class="overview-section">
+        <h3 class="overview-label">Pipeline gate</h3>
+        <p class="muted" style="margin: 0 0 8px 0;font-size:0.88em">
+          Each study is a model-building gate: it answers <em>"Can we safely build the next layer?"</em>
+        </p>
+        
+        <div style="margin-bottom:6px"><strong>Prerequisites:</strong> <em class="muted">none (root study)</em></div>
+        
+        
+        <div style="margin-bottom:6px"><strong>Enables:</strong>
+          <code>{&#39;study&#39;: &#39;study-2-real-metabolism&#39;, &#39;condition&#39;: &#39;tests-passed&#39;}</code>
+        </div>
+        
+        
+        <div><strong>Proceed when:</strong> <span class="muted">Operational closure CLOSED (gap = ∅, boundary = {nutrient}) AND precariousness holds
 (the self-produced boundary collapses when nutrient is withdrawn).
 </span></div>
+        
+      </div>
       
+
+      
+
+      
+      
+      <div class="overview-section">
+        <h2 class="overview-label">Behavioral tests</h2>
+        
+        
+        
+        
+        
+        <p style="margin:0">
+          <strong>3</strong> tests defined —
+            <span class="classification-pill classification-primary">2 primary</span>
+            <span class="classification-pill classification-supporting">1 supporting</span>
+          <a onclick="_setStudyTab('tests')" style="cursor:pointer;color:#3b82f6;text-decoration:underline;margin-left:6px">View on Tests tab →</a>
+        </p>
+      </div>
+      
+
+      
+
+      
+
+      
+      
+
+      
+      
+
+      <div class="overview-section">
+        <h3 class="overview-label">Status</h3>
+        <select id="status-select" data-field="status" class="overview-status-select">
+          <option value="planned"     >planned</option>
+          <option value="draft"       >draft</option>
+          <option value="in-progress" >in-progress</option>
+          <option value="running"     >running</option>
+          <option value="ran"         >ran</option>
+          <option value="completed"   selected>completed</option>
+          <option value="complete"    >complete</option>
+          <option value="archived"    >archived</option>
+        </select>
+        
+        <p class="muted" style="margin:6px 0 0 0;font-size:0.85em">Lifecycle phase: <strong>Evaluate</strong> (Design → Build → Simulate → Evaluate → Decide).</p>
+        
+      </div>
+
+      <div class="study-counts-strip">
+        <div class="count-cell">
+          <strong>0</strong>
+          <span class="count-label">variants</span>
+        </div>
+        <div class="count-cell">
+          <strong>0</strong>
+          <span class="count-label">readouts</span>
+        </div>
+        <div class="count-cell">
+          <strong>0</strong>
+          <span class="count-label">requirements</span>
+        </div>
+        <div class="count-cell">
+          <strong>2</strong>
+          <span class="count-label">runs</span>
+        </div>
+      </div>
+
     </details>
-    
-
-    
-
-    
-    
-    <div class="overview-section">
-      <h2 class="overview-label">Behavioral tests</h2>
-      
-      
-      
-      
-      
-      <p style="margin:0">
-        <strong>3</strong> tests defined —
-          <span class="classification-pill classification-primary">2 primary</span>
-          <span class="classification-pill classification-supporting">1 supporting</span>
-        <a onclick="_setStudyTab('tests')" style="cursor:pointer;color:#3b82f6;text-decoration:underline;margin-left:6px">View on Tests tab →</a>
-      </p>
-    </div>
-    
-
-    
-
-    
-
-    
-    
-
-    <div class="overview-section">
-      <h2 class="overview-label">Status</h2>
-      <select id="status-select" data-field="status" class="overview-status-select">
-        <option value="planned"     >planned</option>
-        <option value="running"     >running</option>
-        <option value="ran"         >ran</option>
-        <option value="complete"    >complete</option>
-        <option value="failed"      >failed</option>
-      </select>
-      
-      <p class="muted" style="margin:6px 0 0 0;font-size:0.85em">Lifecycle phase: <strong>Evaluate</strong> (Design → Build → Simulate → Evaluate → Decide).</p>
-      
-    </div>
-
-    <div class="study-counts-strip">
-      <div class="count-cell">
-        <strong>0</strong>
-        <span class="count-label">variants</span>
-      </div>
-      <div class="count-cell">
-        <strong>0</strong>
-        <span class="count-label">readouts</span>
-      </div>
-      <div class="count-cell">
-        <strong>0</strong>
-        <span class="count-label">requirements</span>
-      </div>
-      <div class="count-cell">
-        <strong>2</strong>
-        <span class="count-label">runs</span>
-      </div>
-    </div>
 
     
     <div id="feedback-tracked-panel"></div>
@@ -629,21 +560,24 @@ fed it persists, starved it dissipates.
 
 
 
-
-<section class="study-tab-panel" data-kind="build" id="panel-build" hidden>
+<section class="study-tab-panel" data-kind="compose" id="panel-compose" hidden>
+  <h2 class="overview-label" style="margin-bottom:8px">Model composition</h2>
+  
+  
+  
 
   
   
   <div class="overview-section" id="model-section">
     <h3>Model <span class="muted" style="font-size:0.85em;font-weight:normal">— the composite(s) this study runs</span></h3>
-    <p class="muted" style="font-size:0.88em">Every study runs at least one composite. Click a composite to open a static view in the bigraph-loom explorer.</p>
+    <p class="muted" style="font-size:0.88em">Every study runs at least one composite. Click a composite to open it in the bigraph-loom explorer — live: configure &amp; run; published bundle: read-only wiring view.</p>
     
     <div class="cond-block">
       <div class="cond-block-title">
         membrane-metabolism-loop
         
         <button type="button" class="action-btn" style="margin-left:8px;font-size:0.82em"
-                onclick="_openCompositeLoom('pbg_autopoiesis.composites.membrane-metabolism-loop')">🧬 membrane-metabolism-loop — explore in bigraph-loom ↗</button>
+                onclick="_openCompositeLoom('pbg_autopoiesis.composites.membrane-metabolism-loop')">🧬 membrane-metabolism-loop — configure & run ↗</button>
         
       </div>
       
@@ -664,19 +598,26 @@ fed it persists, starved it dissipates.
   
 
   
+  
+  
+  
 </section>
 
 
 
+<section class="study-tab-panel" data-kind="simulate" id="panel-simulate" hidden>
+
+  <div id="reproduce-card" class="reproduce-card"
+       style="margin:0 0 14px 0;padding:10px 12px;background:#f8fafc;
+              border:1px solid #e2e8f0;border-radius:6px;font-size:0.9em"></div>
 
 
-<section class="study-tab-panel" data-kind="simulations" id="panel-simulations" hidden>
 
   
   
   <div class="overview-section" id="ran-section">
     <h3>What we ran <span class="muted" style="font-size:0.85em;font-weight:normal">(composite + parameters)</span></h3>
-    <p class="muted" style="font-size:0.88em">The composite(s) this study simulated, their parameters, replication, and run status. Click a composite to open a static view in bigraph-loom.</p>
+    <p class="muted" style="font-size:0.88em">The composite(s) this study simulated, their parameters, replication, and run status. Click a composite to open it in the bigraph-loom explorer — live: configure &amp; run; published bundle: read-only wiring view.</p>
     
     <table class="cond-table" style="width:100%;border-collapse:collapse">
       <thead><tr><th style="text-align:left">Run</th><th style="text-align:left">Composite</th><th style="text-align:left">Parameters</th><th style="text-align:left">Replication</th><th style="text-align:left">Status</th></tr></thead>
@@ -698,325 +639,32 @@ fed it persists, starved it dissipates.
   
 
   
-</section>
 
-
-<section class="study-tab-panel" data-kind="baseline" id="panel-baseline">
-  <div class="baseline-list">
-    
-    <article class="baseline-entry" data-baseline-name="membrane-metabolism-loop">
-      <header class="baseline-entry-header">
-        <h3 class="baseline-entry-name">membrane-metabolism-loop</h3>
-        <code class="baseline-entry-fqn">pbg_autopoiesis.composites.membrane-metabolism-loop</code>
-      </header>
-      
-      <table class="baseline-params">
-        <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
-        <tbody>
-          
-          <tr><td><code>supply_rate</code></td><td><code>2.0</code></td></tr>
-          
-        </tbody>
-      </table>
-      
-      <div class="baseline-entry-actions">
-        <button class="btn-run-baseline" data-baseline-name="membrane-metabolism-loop">Run</button>
-        <button class="btn-baseline-remove" data-baseline-name="membrane-metabolism-loop">Remove</button>
-      </div>
-    </article>
-    
-  </div>
-
-  <details class="baseline-add-form">
-    <summary class="btn-baseline-add">+ Add composite</summary>
-    <form id="baseline-add-form" onsubmit="return _submitBaselineAdd(event)">
-      <label>Name (short, unique): <input name="name" required pattern="[a-zA-Z0-9_-]+"></label>
-      <label>Composite ID: <input name="composite" required placeholder="pkg.composites.foo"></label>
-      <label>Params (JSON, optional): <textarea name="params" placeholder="{}"></textarea></label>
-      <button type="submit">Add</button>
+  <!-- Configure & Run widget (SP-C) — native run launcher for this study -->
+  <div id="study-configure-run" style="margin-bottom:18px"></div>
+  <div class="panel" id="remote-run-panel" style="margin-bottom:18px">
+    <h3 style="margin-top:0">Run on remote (smsvpctest)</h3>
+    <p class="muted" style="font-size:0.9em">
+      Pushes the workspace's current branch, builds a simulator from that commit, and runs
+      it on the Ray backend. Results land as a run on this study. Requires GitHub login.
+    </p>
+    <form id="remote-run-form" onsubmit="return _submitRemoteRun(event)">
+      <label>Generations: <input name="num_generations" type="number" min="1" value="1" required></label>
+      <label>Seeds: <input name="num_seeds" type="number" min="1" value="1" required></label>
+      <label><input type="checkbox" name="run_parca" checked> Run ParCa</label>
+      <button type="submit" class="btn-mini" id="remote-run-btn">▶ Run on remote</button>
     </form>
-  </details>
-</section>
-
-<section class="study-tab-panel" data-kind="observables" id="panel-observables" hidden>
-  <div class="observables-section">
-    <h3 class="section-title">Observables</h3>
-    <p class="muted">Experimental measurements selected from the composite's bigraph state. Each observable resolves to a `store_path` (and optional `index_by` when the underlying store is indexed by ID).</p>
-    
-    
-    
-    <div id="auto-readouts" data-composite="pbg_autopoiesis.composites.membrane-metabolism-loop">
-      <p class="empty-message">No readouts declared — deriving the available stores from the composite…</p>
-    </div>
-    
-
-    <details class="observables-add-form" style="margin-top: 1.2em;" id="bigraph-picker-details">
-      <summary class="btn-baseline-add">+ Add observable from bigraph state</summary>
-      <div class="bigraph-picker" style="display: grid; grid-template-columns: minmax(360px, 2fr) 1fr; gap: 16px; margin-top: 10px;">
-        <div>
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-            <input type="search" id="bigraph-filter" placeholder="Filter paths (regex)…"
-                   style="flex:1; padding:4px 6px; font-size:0.9em;">
-            <button class="btn-mini" onclick="_reloadBigraphPaths()">Reload</button>
-          </div>
-          <div id="bigraph-tree" style="border:1px solid #e2e8f0; border-radius:4px; padding:8px; max-height:520px; overflow:auto; font-family: ui-monospace, monospace; font-size:0.82em; background:#fafafa;">
-            <span class="muted">Click "Reload" or expand this panel to load the path tree.</span>
-          </div>
-          <div id="bigraph-source-info" class="muted" style="font-size:0.75em; margin-top:4px;"></div>
-        </div>
-        <aside style="border:1px solid #e2e8f0; border-radius:4px; padding:10px; background:#fff;">
-          <h4 style="margin:0 0 6px 0; font-size:0.9em;">Selected path</h4>
-          <div id="bigraph-selected" class="muted" style="font-size:0.85em;">Pick a leaf on the left.</div>
-          <h4 style="margin:12px 0 6px 0; font-size:0.9em;">Observable spec</h4>
-          <p class="muted" style="margin:0 0 6px 0; font-size:0.78em;">Copy into <code>studies/study-1-membrane-metabolism-loop/study.yaml</code> under <code>observables:</code>.</p>
-          <textarea id="bigraph-spec" readonly rows="8"
-                    style="width:100%; font-family: ui-monospace, monospace; font-size:0.78em; box-sizing: border-box;"></textarea>
-          <button class="btn-mini" onclick="_copyBigraphSpec()" style="margin-top:6px;">Copy</button>
-        </aside>
-      </div>
-    </details>
-    <script>
-      // Lazy load the bigraph tree the first time the observables panel
-      // becomes visible OR the details element opens.
-      (function() {
-        var loaded = false;
-        function load() {
-          if (loaded) return; loaded = true; _reloadBigraphPaths();
-        }
-        document.getElementById('bigraph-picker-details')
-                .addEventListener('toggle', function() {
-                  if (this.open) load();
-                });
-        // Also load on tab activation if the panel is already visible.
-        document.querySelector('[data-kind="observables"].study-tab')
-                .addEventListener('click', function() { setTimeout(load, 50); });
-      })();
-
-      function _reloadBigraphPaths() {
-        var tree = document.getElementById('bigraph-tree');
-        var info = document.getElementById('bigraph-source-info');
-        tree.innerHTML = '<span class="muted">Loading…</span>';
-        info.textContent = '';
-        fetch('/api/study-bigraph-paths?study=study-1-membrane-metabolism-loop', {headers: {Accept: 'application/json'}})
-          .then(function(r) { return r.json().then(function(j) { return {ok: r.ok, body: j}; }); })
-          .then(function(res) {
-            if (!res.ok) {
-              tree.innerHTML = '<span style="color:#b91c1c;">' + (res.body.error || 'failed to load') + '</span>';
-              if (res.body.looked_in) {
-                tree.innerHTML += '<br><span class="muted" style="font-size:0.78em;">looked in: ' + res.body.looked_in.join(', ') + '</span>';
-              }
-              if (res.body.hint) {
-                tree.innerHTML += '<br><span class="muted" style="font-size:0.78em;">hint: ' + res.body.hint + '</span>';
-              }
-              return;
-            }
-            window._bigraphNodes = res.body.nodes || [];
-            info.textContent = res.body.composite + '  ·  ' + res.body.source_file + '  ·  ' + res.body.node_count + ' leaves (max_depth=' + res.body.max_depth + ')';
-            _renderBigraphTree(window._bigraphNodes, '');
-          });
-      }
-
-      // Render the flat list as a nested <ul>. Group nodes by path[0..n] so
-      // siblings collapse under shared parents.
-      function _renderBigraphTree(nodes, filter) {
-        var tree = document.getElementById('bigraph-tree');
-        tree.innerHTML = '';
-        var rx = null;
-        if (filter) { try { rx = new RegExp(filter, 'i'); } catch (e) {} }
-        // Build a nested object: tree[seg] = {__leaf?:node, __children?:tree}
-        var root = {};
-        nodes.forEach(function(n) {
-          var p = n.path;
-          if (rx && !rx.test(p.join('.'))) return;
-          var cursor = root;
-          for (var i = 0; i < p.length - 1; i++) {
-            var seg = p[i];
-            if (!cursor[seg]) cursor[seg] = {__children: {}};
-            cursor = cursor[seg].__children;
-          }
-          var last = p[p.length - 1];
-          if (!cursor[last]) cursor[last] = {};
-          cursor[last].__leaf = n;
-        });
-
-        function render(level, container, prefix) {
-          Object.keys(level).sort().forEach(function(seg) {
-            var entry = level[seg];
-            var li = document.createElement('li');
-            li.style.listStyle = 'none';
-            li.style.margin = '1px 0';
-
-            var fullPath = prefix.concat([seg]);
-            var leaf = entry.__leaf;
-            var children = entry.__children;
-
-            if (leaf && !children) {
-              // Pure leaf — clickable.
-              var btn = document.createElement('button');
-              btn.type = 'button';
-              btn.className = 'bigraph-leaf-btn';
-              btn.style.cssText = 'background:none; border:none; padding:2px 4px; cursor:pointer; text-align:left; font-family:inherit; font-size:inherit; color:#1d4ed8; width:100%;';
-              btn.innerHTML = '<span style="color:#9ca3af;">·</span> ' + seg
-                + ' <span class="muted" style="font-size:0.85em;">(' + leaf.kind
-                + (leaf.fields ? ': ' + leaf.fields.join(', ') : '')
-                + (leaf.length !== undefined ? ', n=' + leaf.length : '')
-                + ')</span>';
-              btn.onclick = function() { _selectBigraphLeaf(leaf); };
-              li.appendChild(btn);
-            } else {
-              // Has children — make collapsible.
-              var det = document.createElement('details');
-              det.open = (prefix.length < 2);  // expand top-2 levels by default
-              var sum = document.createElement('summary');
-              sum.style.cursor = 'pointer';
-              sum.innerHTML = '<strong>' + seg + '</strong>';
-              det.appendChild(sum);
-              var ul = document.createElement('ul');
-              ul.style.cssText = 'margin:0 0 0 14px; padding:0;';
-              render(children, ul, fullPath);
-              det.appendChild(ul);
-              li.appendChild(det);
-              if (leaf) {  // both a leaf and has children — rare
-                var hint = document.createElement('span');
-                hint.className = 'muted';
-                hint.style.fontSize = '0.78em';
-                hint.textContent = ' (' + leaf.kind + ')';
-                sum.appendChild(hint);
-              }
-            }
-            container.appendChild(li);
-          });
-        }
-
-        var ul = document.createElement('ul');
-        ul.style.cssText = 'margin:0; padding:0;';
-        render(root, ul, []);
-        tree.appendChild(ul);
-      }
-
-      function _selectBigraphLeaf(leaf) {
-        var sel = document.getElementById('bigraph-selected');
-        sel.innerHTML = '<code style="font-size:0.85em;">' + leaf.path.join('.') + '</code>'
-          + '<br><span class="muted" style="font-size:0.78em;">kind: ' + leaf.kind
-          + (leaf.fields ? ', fields: [' + leaf.fields.join(', ') + ']' : '')
-          + (leaf.length !== undefined ? ', length: ' + leaf.length : '')
-          + (leaf.preview !== undefined ? ', value: ' + leaf.preview : '')
-          + '</span>';
-        // Suggest a slug from the last segment, with -<parent> for disambiguation if generic.
-        var last = leaf.path[leaf.path.length - 1] || 'obs';
-        var second = leaf.path[leaf.path.length - 2] || '';
-        var slug = (last === 'count' || last === 'id' || second.length > 0 && /listeners?$/.test(second))
-          ? (second + '_' + last).replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase()
-          : last.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-        var pathStr = leaf.path.join('.');
-        var spec;
-        if (leaf.kind === 'structured_array') {
-          spec = '- name: ' + slug + '_by_id\n'
-            + '  status: available\n'
-            + '  description: |\n'
-            + '    Bulk count by molecule id. Replace EXAMPLE_ID with the actual id\n'
-            + '    (e.g. "MONOMER0-160[c]" for DnaA).\n'
-            + '  store_path: ' + pathStr + '\n'
-            + '  index_by: {type: bulk_id, value: "EXAMPLE_ID"}\n';
-        } else if (leaf.kind === 'array') {
-          spec = '- name: ' + slug + '\n'
-            + '  status: available\n'
-            + '  description: |\n'
-            + '    Array listener at ' + pathStr + ' (length=' + leaf.length + ' at snapshot time).\n'
-            + '    If this is indexed by id (e.g. tu_id, tf_id), add index_by:.\n'
-            + '  store_path: ' + pathStr + '\n';
-        } else {
-          spec = '- name: ' + slug + '\n'
-            + '  status: available\n'
-            + '  description: "Scalar observable at ' + pathStr + '"\n'
-            + '  store_path: ' + pathStr + '\n';
-        }
-        document.getElementById('bigraph-spec').value = spec;
-      }
-
-      function _copyBigraphSpec() {
-        var ta = document.getElementById('bigraph-spec');
-        if (!ta.value) return;
-        ta.select();
-        document.execCommand('copy');
-      }
-
-      document.getElementById('bigraph-filter').addEventListener('input', function(e) {
-        if (window._bigraphNodes) _renderBigraphTree(window._bigraphNodes, e.target.value);
-      });
-    </script>
-
-    
+    <div id="remote-run-progress" hidden></div>
   </div>
-</section>
-
-<section class="study-tab-panel" data-kind="variants" id="panel-variants">
-  <div class="variants-list">
-    
-    <p class="empty-message">No variants yet. Add one to perturb a baseline composite's parameters.</p>
-    
-  </div>
-
-  <details class="variant-add-form-wrapper">
-    <summary class="btn-variant-new">+ New variant</summary>
-    <form id="variant-new-form" onsubmit="return _submitVariantAdd(event)">
-      <label>Name: <input name="name" required pattern="[a-zA-Z0-9_-]+"></label>
-      <label>Base composite:
-        <select name="base_composite" required onchange="_onBaseCompositeChange(this)">
-          <option value="">— pick a baseline composite —</option>
-          
-          <option value="membrane-metabolism-loop" data-composite-id="pbg_autopoiesis.composites.membrane-metabolism-loop">membrane-metabolism-loop (pbg_autopoiesis.composites.membrane-metabolism-loop)</option>
-          
-        </select>
-      </label>
-      <div id="variant-new-params" class="param-form">
-        <p class="muted">Pick a base composite to see its parameters.</p>
-      </div>
-      <button type="submit">Save variant</button>
-    </form>
-  </details>
-
-  <!-- Hidden edit form, populated dynamically when "Edit params" is clicked -->
-  <dialog id="variant-edit-dialog">
-    <form id="variant-edit-form" onsubmit="return _submitVariantEdit(event)" method="dialog">
-      <h3>Edit parameter overrides for <code id="variant-edit-name"></code></h3>
-      <div id="variant-edit-params" class="param-form"></div>
-      <menu>
-        <button type="button" onclick="document.getElementById('variant-edit-dialog').close()">Cancel</button>
-        <button type="submit">Save</button>
-      </menu>
-    </form>
-  </dialog>
-</section>
-
-<section class="study-tab-panel" data-kind="interventions" id="panel-interventions">
-  <div class="interventions-list">
-    
-    <p class="empty-message">No interventions yet. Add one to record an experimental condition.</p>
-    
-  </div>
-
-  <details class="intervention-add-form-wrapper">
-    <summary class="btn-intervention-new">+ New intervention</summary>
-    <form id="intervention-new-form" onsubmit="return _submitInterventionAdd(event)">
-      <label>Name: <input name="name" required pattern="[a-zA-Z0-9_-]+"></label>
-      <label>Description: <textarea name="description" placeholder="Describe the experimental condition"></textarea></label>
-      <button type="submit">Add</button>
-    </form>
-  </details>
-</section>
-
-<section class="study-tab-panel" data-kind="runs" id="panel-runs">
   <div class="runs-section">
     <h3 class="section-title">Runs</h3>
     <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">
       Per-run record of what was executed. Visualizations live in the
-      <a href="#" onclick="_setStudyTab('visualizations');return false">Visualizations</a> tab.
+      <a href="#" onclick="_setStudyTab('visualize');return false">Visualize</a> tab.
     </p>
     <table id="runs-table">
       <thead>
         <tr>
-          <th></th>
           <th>Variant / Baseline</th>
           <th>Composite</th>
           <th>Steps</th>
@@ -1035,8 +683,8 @@ fed it persists, starved it dissipates.
         <tr id="run-autopoiesis-meter"
             data-run-id=""
             data-spec-id=""
+            data-store-path=""
             data-started-at="2026-06-14T01:27:52.189563+00:00">
-          <td><input type="checkbox" class="run-compare-checkbox" value=""></td>
           <td>
             membrane-metabolism-loop
             
@@ -1092,8 +740,8 @@ fed it persists, starved it dissipates.
         <tr id="run-autopoiesis-meter"
             data-run-id="autopoiesis-meter"
             data-spec-id="study-1-membrane-metabolism-loop"
+            data-store-path=""
             data-started-at="2026-06-14T01:27:52.189563+00:00">
-          <td><input type="checkbox" class="run-compare-checkbox" value="autopoiesis-meter"></td>
           <td>
             membrane-metabolism-loop
             
@@ -1141,12 +789,51 @@ fed it persists, starved it dissipates.
         
       </tbody>
     </table>
-    <div class="runs-actions">
-      <button class="btn-compare-selected">Compare selected</button>
-      <button class="btn-clear-runs danger">Clear all runs</button>
-    </div>
   </div>
 
+</section>
+
+<section class="study-tab-panel" data-kind="visualize" id="panel-visualize" hidden>
+  <div class="observables-section">
+    <h3 class="section-title">Readouts</h3>
+    <p class="muted">Quantities collected from each simulation run. Each row is an emitter <code>store_path</code> the composite will save; authored entries in <code>study.yaml</code> add names, descriptions, and units on top.</p>
+    <div id="readouts-table" data-study="study-1-membrane-metabolism-loop">
+      <p class="empty-message">Loading readouts from the composite emit plan…</p>
+    </div>
+
+    
+  </div>
+
+  <div class="viz-section">
+
+    
+    
+
+    <h3 class="section-title">Latest-run visualizations (auto-generated from <code>runs.db</code>)</h3>
+    <p class="muted" style="margin:0 0 8px 0;font-size:0.88em">
+      These charts re-render each time the page loads, against the most recent simulation in the study's <code>runs.db</code>.
+      They are also embedded into the downloadable investigation HTML report.
+    </p>
+    <div id="viz-charts-panel" class="charts-panel"></div>
+  </div>
+</section>
+
+<section class="study-tab-panel" data-kind="data" id="panel-data" hidden>
+  <div class="data-section">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h3 class="section-title" style="margin-right:auto">Analysis result files</h3>
+      <a id="data-download-all" class="btn-mini" style="display:none"
+         href="/api/study-analysis-zip?study=study-1-membrane-metabolism-loop">Download all (.zip)</a>
+    </div>
+    <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">
+      Tabular outputs (<code>.csv</code> / <code>.tsv</code>) written by this study's
+      Analysis steps — e.g. PTools exports and per-run analysis tables. Click a file to
+      download it.
+    </p>
+    <div id="data-files" data-study="study-1-membrane-metabolism-loop">
+      <p class="empty-message">Loading result files…</p>
+    </div>
+  </div>
 </section>
 
 <section class="study-tab-panel" data-kind="tests" id="panel-tests" hidden>
@@ -1199,10 +886,14 @@ fed it persists, starved it dissipates.
     
     
     <li class="expected-behavior-item" id="bt-operational-closure"
+        data-test-kind="behavioral"
+        
         data-pytest-node="operational-closure"
         data-classification="primary"
         data-result="PASS"
         style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #10b981; background: #f8fafc; border-radius: 4px;">
+      
+        
       <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
         <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #d1fae5; color: #065f46">✓ PASS</span>
         <span class="classification-pill classification-primary">primary</span>
@@ -1230,6 +921,7 @@ pass_if: {"op": "\u003c=", "provenance": {"kind": "theory", "note": "gap = \u220
       
       
       
+      
     </li>
     
     
@@ -1240,10 +932,14 @@ pass_if: {"op": "\u003c=", "provenance": {"kind": "theory", "note": "gap = \u220
     
     
     <li class="expected-behavior-item" id="bt-precariousness"
+        data-test-kind="behavioral"
+        
         data-pytest-node="precariousness"
         data-classification="primary"
         data-result="PASS"
         style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #10b981; background: #f8fafc; border-radius: 4px;">
+      
+        
       <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
         <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #d1fae5; color: #065f46">✓ PASS</span>
         <span class="classification-pill classification-primary">primary</span>
@@ -1273,6 +969,7 @@ pass_if: {"op": "\u003c", "provenance": {"kind": "calibration", "note": "0.3 sta
       
       
       
+      
     </li>
     
     
@@ -1283,10 +980,14 @@ pass_if: {"op": "\u003c", "provenance": {"kind": "calibration", "note": "0.3 sta
     
     
     <li class="expected-behavior-item" id="bt-identity-persists-when-fed"
+        data-test-kind="behavioral"
+        
         data-pytest-node="identity-persists-when-fed"
         data-classification="supporting"
         data-result="PASS"
         style="margin: 0 0 10px 0; padding: 10px 12px; border-left: 4px solid #3b82f6; background: #f8fafc; border-radius: 4px;">
+      
+        
       <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;">
         <span class="bt-result" style="font-size: 0.75em; font-family: monospace; padding: 2px 8px; border-radius: 9999px; background: #d1fae5; color: #065f46">✓ PASS</span>
         <span class="classification-pill classification-supporting">supporting</span>
@@ -1315,54 +1016,11 @@ pass_if: {"op": "\u003e=", "value": 1.0}</pre>
       
       
       
+      
     </li>
     
   </ul>
   
-</section>
-
-<section class="study-tab-panel" data-kind="visualizations" id="panel-visualizations" hidden>
-  <div class="viz-section">
-
-    
-    
-
-    <h3 class="section-title">Latest-run visualizations (auto-generated from <code>runs.db</code>)</h3>
-    <p class="muted" style="margin:0 0 8px 0;font-size:0.88em">
-      These charts re-render each time the page loads, against the most recent simulation in the study's <code>runs.db</code>.
-      They are also embedded into the downloadable investigation HTML report.
-    </p>
-    <div id="viz-charts-panel" class="charts-panel"></div>
-    <h3 class="section-title" style="margin-top:24px">Registered visualization modules</h3>
-    <div id="viz-list">
-      
-      <div class="viz-config">precariousness <code class="muted"></code>
-        
-      </div>
-      
-      <div class="viz-config">dynamics <code class="muted"></code>
-        
-      </div>
-      
-      <div class="viz-config">emergent_boundary <code class="muted"></code>
-        
-      </div>
-      
-      <div class="viz-config">volume_coupling <code class="muted"></code>
-        
-      </div>
-      
-      <div class="viz-config">closure_cycle <code class="muted"></code>
-        
-      </div>
-      
-      <div class="viz-config">phase_portrait <code class="muted"></code>
-        
-      </div>
-      
-    </div>
-    <button class="btn-add-viz" style="margin-top:8px">+ Add visualization</button>
-  </div>
 </section>
 
 <section class="study-tab-panel" data-kind="conclusions" id="panel-conclusions" hidden>
@@ -1372,207 +1030,211 @@ pass_if: {"op": "\u003e=", "value": 1.0}</pre>
   
   
   
+
   
-  
-  
-  <div class="overview-section" id="discovery-implications-section" style="margin-top:18px">
-    <h2 class="overview-label">Discovery implications</h2>
-    <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">Where this study's results leave the mechanism model — and what to investigate next.</p>
+  <div class="overview-section"><h2 class="overview-label">Verdict &amp; conclusion</h2>
 
     
-    <div class="di-uncertainties">
-      
-      <div class="di-unc di-unc-resolved">
-        <h4>✓ Resolved uncertainties</h4>
-        <ul><li>Operational closure is CLOSED modulo nutrient (gap = requires \ provides \ boundary = empty): the boundary and metabolism are self-produced.</li><li>The identity is precarious-but-maintained: volume collapses when self-production stops (fed vs starved).</li></ul>
-      </div>
-      
-      
-      <div class="di-unc di-unc-remaining">
-        <h4>● Remaining uncertainties</h4>
-        <ul><li>Closure is shown at a single deterministic parameter point — robustness to supply_rate / decay is not yet demonstrated (a parameter sweep, not seeds, since the loop is an ODE).</li><li>The closure metric is not calibrated: no system that SHOULD fail closure has been run, so its discriminative power is unestablished (the reviewers&#39; circularity concern).</li></ul>
-      </div>
-      
-    </div>
-    
-
-    
-    <div class="di-group">
-      <h3>Alternate hypotheses <span class="muted" style="font-weight:normal;font-size:0.85em">(1)</span></h3>
-      
-      <div class="di-card">
-        <div class="di-card-stmt"><strong>(untitled hypothesis)</strong></div>
-        <div class="di-card-why">membrane, metabolism and derived variables are explicitly coupled by construction.</div>
-        
-        
-        <div class="di-card-line"><span class="di-lbl">Discriminating observables:</span>
-          <code>closure_gap_size on an externally-maintained-membrane control (should NOT close)</code>, <code>closure_gap_size on a random-cyclic network (should NOT close)</code>
-        </div>
-        
-      </div>
-      
-    </div>
-    
-
-    
-
-    
-    
-    
-    <div class="di-group">
-      <h3>Follow-up study proposals
-        <span class="muted" style="font-weight:normal;font-size:0.82em">(discovered)</span>
-        <span class="muted" style="font-weight:normal;font-size:0.85em">(2)</span></h3>
-      <p class="muted" style="margin:0 0 8px 0;font-size:0.85em">Click <strong>➕ Add to investigation</strong> to spawn a new study node in the investigation graph.</p>
-      <div class="followup-list">
-        
-        
-        <div class="di-card di-fup-card">
-          <div class="followup-header">
-            <strong class="followup-title">Closure robustness sweep</strong>
-            
-            
-            
-            
-          </div>
-          
-          
-          <div class="followup-actions" style="margin-top:8px">
-            <button class="btn-seed-followup"
-                    onclick="_seedFollowupProposal('study-1-membrane-metabolism-loop', "closure-parameter-sweep")">➕ Add to investigation</button>
-          </div>
-        </div>
-        
-        
-        <div class="di-card di-fup-card">
-          <div class="followup-header">
-            <strong class="followup-title">Externally-maintained membrane (should FAIL)</strong>
-            
-            
-            
-            
-          </div>
-          
-          
-          <div class="followup-actions" style="margin-top:8px">
-            <button class="btn-seed-followup"
-                    onclick="_seedFollowupProposal('study-1-membrane-metabolism-loop', "external-membrane-negative-control")">➕ Add to investigation</button>
-          </div>
-        </div>
-        
-      </div>
-    </div>
-    
-  </div>
-  
-  <div class="overview-section narrative-card" data-narrative-card="conclusion_verdicts" style="margin-bottom:18px">
-    <h2 class="overview-label">⚖️ Verdicts — three-track outcome
-      <span class="narrative-card-hint">(regression / biological / explanatory)</span>
-    </h2>
-    <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">
-      Each track is independent. <em>Regression</em> answers "does the code
-      still build and run cleanly?", <em>biological</em> answers "does the
-      model match the literature?", <em>explanatory</em> answers "did we
-      learn something new?". Each <strong>result is computed</strong> from
-      canonical fields (gate evaluator, run status, finding tiers) — author
-      only the <em>basis</em> (the rationale) for each track.
+    <p class="muted" style="margin:0 0 16px 0;font-size:0.9em">
+      Synthesises the latest run's outcomes against the pre-stated
+      <code>conclusion_logic</code>, then surfaces concrete follow-up actions
+      you can either review (existing studies) or seed (new ones).
     </p>
-    <div class="narrative-grid">
-      <label class="narrative-row">
-        <span class="narrative-label">Regression compatibility</span>
-        <span class="narrative-input verdict-badge-computed" data-verdict-track="regression_compatibility"
-              title="Computed from run status (read-only)"
-              style="display:inline-block;padding:2px 12px;border-radius:9999px;font-weight:700;font-size:0.85em;background:#f1f5f9;color:#475569">PENDING</span>
-        <span class="muted small" style="margin-left:6px">computed from run status</span>
-      </label>
-      <label class="narrative-row narrative-row-wide">
-        <span class="narrative-label">Regression basis</span>
-        <textarea class="narrative-input narrative-textarea" rows="2"
-                  data-narrative-path="conclusion_verdicts.regression_compatibility.basis"
-                  placeholder="e.g. Builds cleanly; tests pass; pyproject deps unchanged."></textarea>
-      </label>
-      <label class="narrative-row">
-        <span class="narrative-label">Biological validation</span>
-        <span class="narrative-input verdict-badge-computed" data-verdict-track="biological_validation"
-              title="Computed from the gate evaluator (read-only)"
-              style="display:inline-block;padding:2px 12px;border-radius:9999px;font-weight:700;font-size:0.85em;background:#f1f5f9;color:#475569">PENDING</span>
-        <span class="muted small" style="margin-left:6px">computed from gate evaluator</span>
-      </label>
-      <label class="narrative-row narrative-row-wide">
-        <span class="narrative-label">Biological basis</span>
-        <textarea class="narrative-input narrative-textarea" rows="2"
-                  data-narrative-path="conclusion_verdicts.biological_validation.basis"
-                  placeholder="e.g. atp_fraction = 0.997, outside Boesen 2024 band [0.2, 0.5]."></textarea>
-      </label>
-      <label class="narrative-row">
-        <span class="narrative-label">Explanatory gain</span>
-        <span class="narrative-input verdict-badge-computed" data-verdict-track="explanatory_gain"
-              title="Computed from interpretation-tier findings (read-only)"
-              style="display:inline-block;padding:2px 12px;border-radius:9999px;font-weight:700;font-size:0.85em;background:#f1f5f9;color:#475569">PENDING</span>
-        <span class="muted small" style="margin-left:6px">computed from interpretation-tier findings</span>
-      </label>
-      <label class="narrative-row narrative-row-wide">
-        <span class="narrative-label">Explanatory basis</span>
-        <textarea class="narrative-input narrative-textarea" rows="2"
-                  data-narrative-path="conclusion_verdicts.explanatory_gain.basis"
-                  placeholder="e.g. Three findings worth keeping; design_pivot_required closed."></textarea>
-      </label>
+    
+
+    <div class="overview-section narrative-card" data-narrative-card="conclusion_verdicts" style="margin-bottom:18px">
+      <h3 class="overview-label">⚖️ Verdicts — three-track outcome
+        <span class="narrative-card-hint">(regression / biological / explanatory)</span>
+      </h3>
+      <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">
+        Each track is independent. <em>Regression</em> answers "does the code
+        still build and run cleanly?", <em>biological</em> answers "does the
+        model match the literature?", <em>explanatory</em> answers "did we
+        learn something new?". Each <strong>result is computed</strong> from
+        canonical fields (gate evaluator, run status, finding tiers) — author
+        only the <em>basis</em> (the rationale) for each track.
+      </p>
+      <div class="narrative-grid">
+        <label class="narrative-row">
+          <span class="narrative-label">Regression compatibility</span>
+          <span class="narrative-input verdict-badge-computed" data-verdict-track="regression_compatibility"
+                title="Computed from run status (read-only)"
+                style="display:inline-block;padding:2px 12px;border-radius:9999px;font-weight:700;font-size:0.85em;background:#f1f5f9;color:#475569">PENDING</span>
+          <span class="muted small" style="margin-left:6px">computed from run status</span>
+        </label>
+        <label class="narrative-row narrative-row-wide">
+          <span class="narrative-label">Regression basis</span>
+          <textarea class="narrative-input narrative-textarea" rows="2"
+                    data-narrative-path="conclusion_verdicts.regression_compatibility.basis"
+                    placeholder="e.g. Builds cleanly; tests pass; pyproject deps unchanged."></textarea>
+        </label>
+        <label class="narrative-row">
+          <span class="narrative-label">Biological validation</span>
+          <span class="narrative-input verdict-badge-computed" data-verdict-track="biological_validation"
+                title="Computed from the gate evaluator (read-only)"
+                style="display:inline-block;padding:2px 12px;border-radius:9999px;font-weight:700;font-size:0.85em;background:#f1f5f9;color:#475569">PENDING</span>
+          <span class="muted small" style="margin-left:6px">computed from gate evaluator</span>
+        </label>
+        <label class="narrative-row narrative-row-wide">
+          <span class="narrative-label">Biological basis</span>
+          <textarea class="narrative-input narrative-textarea" rows="2"
+                    data-narrative-path="conclusion_verdicts.biological_validation.basis"
+                    placeholder="e.g. atp_fraction = 0.997, outside Boesen 2024 band [0.2, 0.5]."></textarea>
+        </label>
+        <label class="narrative-row">
+          <span class="narrative-label">Explanatory gain</span>
+          <span class="narrative-input verdict-badge-computed" data-verdict-track="explanatory_gain"
+                title="Computed from interpretation-tier findings (read-only)"
+                style="display:inline-block;padding:2px 12px;border-radius:9999px;font-weight:700;font-size:0.85em;background:#f1f5f9;color:#475569">PENDING</span>
+          <span class="muted small" style="margin-left:6px">computed from interpretation-tier findings</span>
+        </label>
+        <label class="narrative-row narrative-row-wide">
+          <span class="narrative-label">Explanatory basis</span>
+          <textarea class="narrative-input narrative-textarea" rows="2"
+                    data-narrative-path="conclusion_verdicts.explanatory_gain.basis"
+                    placeholder="e.g. Three findings worth keeping; design_pivot_required closed."></textarea>
+        </label>
+      </div>
     </div>
+
+    
+    
+    
+
+    
+    
+    
+
   </div>
 
   
-  
-  
-  
-  
-  <p class="muted" style="margin:0 0 10px 0;font-size:0.85em">
-    Synthesised read-only from canonical fields — edit <code>findings</code>,
-    <code>limitations</code>, and <code>discovery_implications</code> to change
-    this (and the generated report) together.
-  </p>
-  <div class="conclusions-grid conclusions-synthesis">
-    <div class="conclusion-field">
-      <h3>Claims <span class="muted small">(from findings)</span></h3>
+  <div class="overview-section"><h2 class="overview-label">Evidence</h2>
+
+    
+    
+    
+    
+    <div class="decide-section">
+      <h3 class="overview-label">Latest run outcomes</h3>
+      <div style="font-size:0.88em;color:#64748b;margin-bottom:8px">
+        baseline · seed ? ·
+        ?s simulated ·
+        ? history rows ·
+        started 2026-06-14T01:27:52.189563+00:00
+      </div>
       
-      <ul class="synthesis-list">
-        
-        <li>The network is operationally closed: it self-produces 5/5 required types (lipid, membrane_lipids, nutrient, precursor, volume); only nutrient crosses the boundary. The cell produces its own boundary. Interface closure is CLOSED (the ports cover the requirements) and semantic closure is CLOSED (every self-produced type carries non-zero flux under the fed trajectory). <span class="finding-tier tier-observation">observation</span></li>
-        
-        <li>The identity is precarious — a process, not a container. Fed, the self-produced boundary grows and is maintained (volume 2.97 → 9.37); starved of nutrient it dissipates (2.97 → 0.329). It persists only through continuous self-production. <span class="finding-tier tier-mechanism">mechanism</span></li>
-        
-      </ul>
       
     </div>
-    <div class="conclusion-field">
-      <h3>Evidence <span class="muted small">(from findings)</span></h3>
-      
-      
-      <ul class="synthesis-list">
-        
-        <li>from_test: operational-closure; observed: 0.0; units: types in gap</li>
-        
-        <li>from_test: precariousness; observed: 0.0351; units: starved/fed volume ratio</li>
-        
-      </ul>
-      
-    </div>
-    <div class="conclusion-field">
-      <h3>Limitations <span class="muted small">(from limitations)</span></h3>
-      <p class="muted">None recorded.</p>
-    </div>
-    <div class="conclusion-field">
-      <h3>Next steps <span class="muted small">(from discovery implications)</span></h3>
-      
-      <ul class="synthesis-list">
-        
-        <li><strong>Closure robustness sweep</strong> — Show closure holds across a supply_rate/decay range, not at one point (review C4 for deterministic models).</li>
-        
-        <li><strong>Externally-maintained membrane (should FAIL)</strong> — If the membrane is supplied externally rather than self-produced, precariousness and closure should FAIL — calibrating the metric and showing discriminative power (review C1/C2/C9).</li>
-        
-      </ul>
-      
-    </div>
+    
+    
+
   </div>
+
+  
+  <div class="overview-section"><h2 class="overview-label">Follow-ups &amp; decisions</h2>
+
+    
+    
+    
+    <div class="overview-section" id="discovery-implications-section" style="margin-top:18px">
+      <h3 class="overview-label">Discovery implications</h3>
+      <p class="muted" style="margin:0 0 10px 0;font-size:0.88em">Where this study's results leave the mechanism model — and what to investigate next.</p>
+
+      
+      <div class="di-uncertainties">
+        
+        <div class="di-unc di-unc-resolved">
+          <h4>✓ Resolved uncertainties</h4>
+          <ul><li>Operational closure is CLOSED modulo nutrient (gap = requires \ provides \ boundary = empty): the boundary and metabolism are self-produced.</li><li>The identity is precarious-but-maintained: volume collapses when self-production stops (fed vs starved).</li></ul>
+        </div>
+        
+        
+        <div class="di-unc di-unc-remaining">
+          <h4>● Remaining uncertainties</h4>
+          <ul><li>Closure is shown at a single deterministic parameter point — robustness to supply_rate / decay is not yet demonstrated (a parameter sweep, not seeds, since the loop is an ODE).</li><li>The closure metric is not calibrated: no system that SHOULD fail closure has been run, so its discriminative power is unestablished (the reviewers&#39; circularity concern).</li></ul>
+        </div>
+        
+      </div>
+      
+
+      
+      <div class="di-group">
+        <h3>Alternate hypotheses <span class="muted" style="font-weight:normal;font-size:0.85em">(1)</span></h3>
+        
+        <div class="di-card">
+          <div class="di-card-stmt"><strong>(untitled hypothesis)</strong></div>
+          <div class="di-card-why">membrane, metabolism and derived variables are explicitly coupled by construction.</div>
+          
+          
+          <div class="di-card-line"><span class="di-lbl">Discriminating observables:</span>
+            <code>closure_gap_size on an externally-maintained-membrane control (should NOT close)</code>, <code>closure_gap_size on a random-cyclic network (should NOT close)</code>
+          </div>
+          
+        </div>
+        
+      </div>
+      
+
+      
+
+      
+      
+      
+      <div class="di-group">
+        <h3>Follow-up study proposals
+          <span class="muted" style="font-weight:normal;font-size:0.82em">(discovered)</span>
+          <span class="muted" style="font-weight:normal;font-size:0.85em">(2)</span></h3>
+        <p class="muted" style="margin:0 0 8px 0;font-size:0.85em">Click <strong>➕ Add to investigation</strong> to spawn a new study node in the investigation graph.</p>
+        <div class="followup-list">
+          
+          
+          <div class="di-card di-fup-card">
+            <div class="followup-header">
+              <strong class="followup-title">Closure robustness sweep</strong>
+              
+              
+              
+              
+            </div>
+            
+            
+            <div class="followup-actions" style="margin-top:8px">
+              <button class="btn-seed-followup"
+                      onclick="_seedFollowupProposal('study-1-membrane-metabolism-loop', "closure-parameter-sweep")">➕ Add to investigation</button>
+            </div>
+          </div>
+          
+          
+          <div class="di-card di-fup-card">
+            <div class="followup-header">
+              <strong class="followup-title">Externally-maintained membrane (should FAIL)</strong>
+              
+              
+              
+              
+            </div>
+            
+            
+            <div class="followup-actions" style="margin-top:8px">
+              <button class="btn-seed-followup"
+                      onclick="_seedFollowupProposal('study-1-membrane-metabolism-loop', "external-membrane-negative-control")">➕ Add to investigation</button>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+      
+    </div>
+    
+
+    
+    
+    
+    
+
+  </div>
+
+  
   
 
 </section>
@@ -1692,6 +1354,7 @@ function _seedFollowupProposal(parent, proposalId) {
 window._seedFollowupStudy = _seedFollowupStudy;
 window._seedFollowupProposal = _seedFollowupProposal;
 </script>
+<script src="/pbg-autopoiesis/dashboard/assets/configure-run.js"></script>
 <script src="/pbg-autopoiesis/dashboard/assets/study-detail.js"></script>
 <script>
 // Re-assert the refresh-aware seed handlers AFTER study-detail.js (which
@@ -1699,6 +1362,23 @@ window._seedFollowupProposal = _seedFollowupProposal;
 // investigation view prefers staying in place over a full navigation.
 window._seedFollowupStudy = _seedFollowupStudy;
 window._seedFollowupProposal = _seedFollowupProposal;
+</script>
+<script>
+(function () {
+  var el = document.getElementById("study-configure-run");
+  if (!el || !window.ConfigureRun) return;
+  
+  var compositeRef = "pbg_autopoiesis.composites.membrane-metabolism-loop";
+  
+  var slug = window._studyName || "study-1-membrane-metabolism-loop";
+  ConfigureRun.mount(el, { composite: compositeRef, target: "study", study: slug });
+  // Read-only bundle: there's no live backend to run on — hide the remote-run
+  // launcher (the Configure & Run widget already renders a disabled preview).
+  if (window.__DASH_CONFIG__ && window.__DASH_CONFIG__.mode === "snapshot") {
+    var rp = document.getElementById("remote-run-panel");
+    if (rp) rp.style.display = "none";
+  }
+})();
 </script>
 </body>
 </html>
