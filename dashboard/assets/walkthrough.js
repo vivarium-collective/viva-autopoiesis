@@ -2,6 +2,14 @@
 (function () {
   "use strict";
 
+  // Prefix a root-absolute /api path with the dashboard base path (e.g. /workbench)
+  // so composite-explore run/resolve/status calls reach the workbench under the
+  // co-tenant ALB instead of misrouting to sms-api → 404. No-op at root; composes
+  // safely with the global _base_path_shim (which skips already-prefixed URLs).
+  function _api(p) {
+    return (window.DataSource && window.DataSource.apiUrl) ? window.DataSource.apiUrl(p) : p;
+  }
+
   // Module-level so EVERY render function can call it. It was previously only
   // defined nested inside the investigation-report builder, but called from
   // sibling scopes (tick / study-card / v4 renderers) — which threw
@@ -15,6 +23,12 @@
     if (rest.length > 60) rest = rest.slice(0, 57) + '…';
     return {chip: m[1], title: rest};
   }
+
+  // -------------------------------------------------------------------------
+  // Investigation DAG band state
+  // -------------------------------------------------------------------------
+  var aigBand = 1;                 // 0=far, 1=mid, 2=near (default = current detail)
+  var _lastDagArgs = null;         // [studies, chainsBySlug] for re-render on band change
 
   // -------------------------------------------------------------------------
   // Generic modal helpers
@@ -231,6 +245,39 @@
   }
   window._studyHref = _studyHref;
 
+  // Size an embedded study iframe to the space actually left below it, instead
+  // of the hardcoded calc(100vh - 220px) guess at how tall the chrome above is.
+  // That guess was ~150px short on a 1000px viewport: an 850px porthole onto a
+  // 2100px report, so the report's scrollbar sat inside the page's scrollbar
+  // with a strip of dead space under it. These embeds keep their OWN scroll
+  // context on purpose (the study's .study-tabs are position:sticky and stick to
+  // the iframe's top), so the fix is to make the porthole reach the bottom of
+  // the window — not to auto-grow the iframe, which would strand the tabs.
+  // `panel` is the embed's wrapper (header + iframe). Measuring the header
+  // WITHIN the panel keeps this independent of scroll position — reading the
+  // frame's viewport top instead would race the smooth scrollIntoView that
+  // opens the embed and, mid-flight, compute a negative height that clamps to
+  // the minimum (the bug this replaced).
+  function _fitEmbedToViewport(frame, panel, minH) {
+    if (!frame) return;
+    var fit = function () {
+      if (!frame.isConnected) return;
+      var chrome = 0;
+      if (panel) {
+        var pr = panel.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+        chrome = Math.max(0, Math.round(fr.top - pr.top));   // the embed's own header
+      }
+      var h = Math.max(minH || 480, Math.round(window.innerHeight - chrome - 24));
+      frame.style.height = h + 'px';
+    };
+    fit();
+    if (!frame._fitBound) {
+      window.addEventListener('resize', fit);
+      frame._fitBound = true;
+    }
+  }
+  window._fitEmbedToViewport = _fitEmbedToViewport;
+
   function _openStudyEmbedded(name) {
     if (!name) return;
     var frame = document.getElementById('study-detail-frame');
@@ -249,6 +296,7 @@
     if (nameEl) nameEl.textContent = name;
     window._studyDetailCurrent = name;
     panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+    _fitEmbedToViewport(frame, panel, 560);
   }
   window._openStudyEmbedded = _openStudyEmbedded;
 
@@ -490,6 +538,13 @@
     if (pageId === 'visualizations') {
       _loadAnalysesPage();
     }
+    // Branch page: render the Source (Scope Local/Remote, repo, branch) section on
+    // every navigation, so it's populated from the first visit instead of relying
+    // on the one-time DOMContentLoaded render (which may not have finished — or ran
+    // before the page existed — the first time the user opens Branch).
+    if (pageId === 'github' && typeof window._renderBranchSource === 'function') {
+      window._renderBranchSource();
+    }
     if (pageId === 'simulation-setup') {
       _loadComposites();
     }
@@ -662,12 +717,21 @@
     return '<p class="muted" style="font-style:italic;margin:4px 0">none</p>';
   }
 
-  // A download link to a workspace-relative path. The server GET-serves any
-  // file under the workspace by its workspace-relative path (do_GET ->
-  // WORKSPACE / rel), so the href is simply '/' + path.
+  // A download link to a workspace-relative path.
+  //  - Live server: GET-serves any file under the workspace by its
+  //    workspace-relative path (do_GET -> WORKSPACE / rel), so href = '/' + path.
+  //  - Published snapshot: input binaries (expert docs / datasets) are NOT
+  //    staged in the bundle, so a '/' + path href 404s on GitHub Pages. Instead
+  //    link to the committed file in the GitHub source repo via the raw base
+  //    injected as __DASH_CONFIG__.inputsDownloadBase (see publish.py). Falls
+  //    back to '/' + path when no base is configured.
   function _inputsDownloadLink(path, label) {
     if (!path) return '';
-    var href = '/' + String(path).replace(/^\/+/, '');
+    var cfg = window.__DASH_CONFIG__ || {};
+    var rel = String(path).replace(/^\/+/, '');
+    var href = (cfg.mode === 'snapshot' && cfg.inputsDownloadBase)
+      ? String(cfg.inputsDownloadBase).replace(/\/+$/, '') + '/' + rel
+      : '/' + rel;
     return '<a href="' + _esc(href) + '" download class="action-btn" ' +
       'style="font-size:0.8em;padding:1px 8px;text-decoration:none">⬇ ' +
       _esc(label || 'Download') + '</a>';
@@ -745,8 +809,13 @@
       var bibId = 'bibtex-' + (key || Math.random().toString(36).slice(2));
       bibBlock = '<details style="margin-top:6px">' +
         '<summary style="cursor:pointer;font-size:0.82em;color:#475569">BibTeX</summary>' +
+        // Wrap instead of scroll: a BibTeX entry's `title = {…}` line runs
+        // 200-400px past the panel, and overflow:auto turned every reference
+        // into its own horizontal scrollbar. Wrapping costs a line and removes
+        // the scrollbar entirely.
         '<pre id="' + _esc(bibId) + '" style="background:#f8fafc;border:1px solid #e2e8f0;' +
-        'border-radius:4px;padding:8px;font-size:0.78em;overflow:auto;margin:6px 0">' +
+        'border-radius:4px;padding:8px;font-size:0.78em;margin:6px 0;' +
+        'white-space:pre-wrap;overflow-wrap:anywhere">' +
         _esc(bibtex) + '</pre>' +
         '<button class="action-btn" style="font-size:0.78em;padding:1px 8px" ' +
         'onclick="_copyBibtex(\'' + _esc(bibId) + '\', this)">Copy BibTeX</button>' +
@@ -902,10 +971,62 @@
   }
   window._inputsAdd = _inputsAdd;
 
+  // ── Drag-and-drop source upload ──────────────────────────────────────────
+  function _inputsDzHi(z, on) {
+    if (!z) return;
+    z.style.background = on ? '#eef2ff' : '#f8fafc';
+    z.style.borderColor = on ? '#818cf8' : '#cbd5e1';
+  }
+  function _inputsDragOver(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    _inputsDzHi(e.currentTarget, true);
+  }
+  function _inputsDragLeave(e) {
+    e.preventDefault(); _inputsDzHi(e.currentTarget, false);
+  }
+  function _inputsDrop(e) {
+    e.preventDefault(); e.stopPropagation();
+    _inputsDzHi(e.currentTarget, false);
+    var slug = window._inputsSelectedSlug || window._currentIsetSlug || '';
+    if (!slug) { alert('Select an investigation first (Load sources into: …).'); return; }
+    var files = (e.dataTransfer && e.dataTransfer.files)
+      ? Array.prototype.slice.call(e.dataTransfer.files) : [];
+    files.forEach(_inputsUploadDropped);
+  }
+  // Infer the source category from a dropped file's extension and upload it,
+  // deriving the display name from the filename (no prompt).
+  function _inputsUploadDropped(f) {
+    var name = f.name || 'file';
+    var dot = name.lastIndexOf('.');
+    var ext = (dot >= 0 ? name.slice(dot + 1) : '').toLowerCase();
+    var stem = (dot > 0 ? name.slice(0, dot) : name);
+    var DOCLIKE = ['md', 'markdown', 'txt', 'rst', 'org', 'doc', 'docx', 'odt', 'tex'];
+    _inputsReadFileB64(f, function (b64) {
+      if (ext === 'pdf') {
+        _inputsPost('/api/reference-pdf', { pdf_b64: b64 });
+      } else if (DOCLIKE.indexOf(ext) >= 0) {
+        _inputsPost('/api/expert-doc', { name: stem, filename: name, file_b64: b64 });
+      } else {
+        _inputsPost('/api/dataset', { name: stem, filename: name, file_b64: b64 });
+      }
+    });
+  }
+  window._inputsDragOver = _inputsDragOver;
+  window._inputsDragLeave = _inputsDragLeave;
+  window._inputsDrop = _inputsDrop;
+  window._inputsUploadDropped = _inputsUploadDropped;
+
   function _renderInputs(el, data) {
     var inv = data.investigation || {};
     var glob = data.global || {};
     var current = data.current || null;
+    // Keep the selected-slug in sync with the investigation actually shown, so
+    // the drop zone + "+ Add" buttons resolve the right target even before the
+    // user touches the "Load sources into" dropdown (data.current reflects the
+    // git branch / last selection). Without this, dropping a file falsely
+    // reported "Select an investigation first".
+    if (current) window._inputsSelectedSlug = current;
 
     var invList = data._investigations || [];
 
@@ -947,6 +1068,17 @@
         html += '<p class="muted" style="font-style:italic;font-size:0.85em">' +
           'migrating: showing repo-level inputs</p>';
       }
+      // Drag-and-drop upload zone: drop files straight in — no name prompt,
+      // no file picker. Category is inferred from the extension and the name
+      // from the filename (the "+ Add" buttons below remain for manual naming).
+      html += '<div id="inputs-dropzone" ' +
+        'ondragover="_inputsDragOver(event)" ondragleave="_inputsDragLeave(event)" ondrop="_inputsDrop(event)" ' +
+        'style="border:2px dashed #cbd5e1;border-radius:8px;padding:16px 14px;text-align:center;' +
+        'color:#64748b;font-size:0.9em;margin:10px 0 6px;background:#f8fafc;transition:background .12s,border-color .12s">' +
+        '<div style="font-weight:600;color:#475569">⬆ Drag datasets or expert docs here to upload</div>' +
+        '<div style="font-size:0.78em;color:#94a3b8;margin-top:3px">' +
+          'PDFs → references · .md / .txt / .docx → expert docs · everything else → datasets' +
+        '</div></div>';
       html += '<h4 style="margin:12px 0 4px">Datasets ' +
         _inputsAddBtn('dataset') + '</h4>' +
         _inputsDatasetsHtml(inv.datasets);
@@ -1247,9 +1379,8 @@
   }
 
   // -------------------------------------------------------------------------
-  // Analyses page: a gallery of special, saved, interactive visualizations —
-  // embedded parsimony 3D scenes + a PTools Omics-Viewer launcher.
-  // Backed by GET /api/saved-visualizations.
+  // Analyses page: repo-contributed analysis viewers (launcher/embed cards).
+  // Backed by GET /api/analysis-viewers (a package's workbench_viewers module).
   // -------------------------------------------------------------------------
 
   function _render3dVizCard(v) {
@@ -1320,39 +1451,48 @@
     '</div>';
   }
 
-  function _renderPtoolsCard(ptools) {
-    ptools = ptools || {};
-    var studies = ptools.studies || [];
+  // Generic repo-contributed analysis viewer card (launcher kind). The workbench
+  // knows nothing repo-specific: a viewer is discovered via /api/analysis-viewers
+  // (contributed by a package's workbench_viewers module) and launched via
+  // /api/analysis-viewer/{uid}/launch. `targets` are the launchable rows the
+  // contributor computed (e.g. studies with exported data).
+  function _renderViewerCard(v) {
+    v = v || {};
+    var targets = v.targets || [];
     var html = '<div class="analyses-card">' +
-      '<div class="analyses-card-head"><strong>Pathway Tools &mdash; Omics Viewer</strong></div>' +
-      '<p class="muted" style="font-size:0.85em;margin:4px 0 8px">Overlay a study\'s PTools TSV exports onto the E. coli metabolic map in the Pathway Tools Omics Viewer.</p>';
-    if (!ptools.configured) {
-      html += '<p class="empty-state muted" style="margin:0">PTools not configured. Set <code>ui.ptools_server_url</code> in <code>workspace.yaml</code> to enable launching.</p>';
-    } else if (!studies.length) {
-      html += '<p class="empty-state muted" style="margin:0">No <code>ptools/*.tsv</code> exports found yet. Run a study\'s ptools analyses first.</p>';
+      '<div class="analyses-card-head"><strong>' + _esc(v.title || v.id || 'Viewer') + '</strong></div>';
+    if (v.description) {
+      html += '<p class="muted" style="font-size:0.85em;margin:4px 0 8px">' + _esc(v.description) + '</p>';
+    }
+    if (!targets.length) {
+      html += '<p class="empty-state muted" style="margin:0">No launchable data found yet.</p>';
     } else {
-      // Launching builds a Pathway Tools URL server-side and points at the
-      // workspace-local sms-ptools container (ui.ptools_server_url, e.g.
-      // http://localhost:1555). Neither the /api/ptools-launch endpoint nor
-      // that container exists for the hosted read-only snapshot, so in snapshot
-      // mode we surface an honest note instead of a button that would 404 and
-      // throw "SyntaxError: The string did not match the expected pattern".
+      // A contributed launcher opens against a workspace-local service; the
+      // hosted read-only snapshot has neither the launch backend nor that
+      // service, so surface an honest note instead of a button that would 404.
       var _isSnapshot = (window.__DASH_CONFIG__ || {}).mode === 'snapshot';
-      html += '<div class="ptools-study-list">' + studies.map(function(s) {
-        var action = _isSnapshot
-          ? '<span class="muted" style="font-size:0.8em">Launch from the local dashboard</span>'
-          : '<button class="btn-mini" onclick="_launchPtools(\'' + _esc(s.study) + '\')">Launch in Omics Viewer</button>';
+      html += '<div class="viewer-target-list">' + targets.map(function(t) {
+        // A target may carry a self-contained external URL (e.g. a publicly
+        // hosted 3D viewer) — it opens directly in BOTH live and read-only,
+        // since it needs no local launch backend. Otherwise fall back to the
+        // live Launch button / the read-only "local workbench" note.
+        var action = t.href
+          ? '<a class="btn-mini" href="' + _esc(t.href) + '" target="_blank" rel="noopener">Open</a>'
+          : (_isSnapshot
+          ? '<span class="muted" style="font-size:0.8em">Launch from the local workbench</span>'
+          : '<button class="btn-mini" onclick="_launchViewer(\'' + _esc(v.uid) + '\',\'' + _esc(t.study) + '\')">Launch</button>');
         return '<div class="picker-row">' +
-          '<div class="picker-row-main"><strong>' + _esc(s.study) + '</strong>' +
-            ' <span class="muted" style="font-size:0.82em">' + (s.n_tsvs || 0) + ' TSV' + (s.n_tsvs === 1 ? '' : 's') + '</span></div>' +
+          '<div class="picker-row-main"><strong>' + _esc(t.label || t.study) + '</strong>' +
+            (t.detail ? ' <span class="muted" style="font-size:0.82em">' + _esc(t.detail) + '</span>' : '') + '</div>' +
           '<div class="picker-row-actions">' + action + '</div>' +
         '</div>';
       }).join('') + '</div>';
-      if (_isSnapshot) {
+      var _needsLaunch = targets.some(function(t) { return !t.href; });
+      if (_isSnapshot && _needsLaunch) {
         html += '<p class="muted" style="font-size:0.8em;margin:8px 0 0">' +
-          'The Omics Viewer launches against a local <code>sms-ptools</code> container and is only ' +
-          'available when running the dashboard locally; this read-only view shows which studies ' +
-          'have PTools exports.</p>';
+          'Available in the live workbench: this viewer launches against a local ' +
+          'service, so this read-only view lists which studies have exports rather ' +
+          'than opening it.</p>';
       }
     }
     html += '</div>';
@@ -1367,72 +1507,76 @@
       '<div id="explorer-mount"></div></div>';
   }
 
-  function _launchPtools(study) {
-    // The read-only snapshot has no /api/ptools-launch backend and no local
-    // sms-ptools container to launch against. Bail with a clear message rather
-    // than fetch a 404 HTML page and throw a cryptic JSON-parse SyntaxError.
+  function _launchViewer(uid, study) {
+    // The read-only snapshot has no launch backend to call. Bail with a clear
+    // message rather than fetch a 404 HTML page and throw a JSON-parse error.
     if ((window.__DASH_CONFIG__ || {}).mode === 'snapshot') {
-      alert('The PTools Omics Viewer launches against a local sms-ptools ' +
-            'container and is only available when running the dashboard locally.');
+      alert('This viewer launches against a local service and is only available ' +
+            'when running the workbench locally.');
       return;
     }
-    var url = '/api/ptools-launch/' + encodeURIComponent(study);
+    var url = '/api/analysis-viewer/' + encodeURIComponent(uid) + '/launch' +
+      (study ? '?study=' + encodeURIComponent(study) : '');
     fetch(url).then(function(r) {
-      // Parse defensively: a non-JSON body (e.g. a 404 HTML page) otherwise
-      // throws "SyntaxError: The string did not match the expected pattern".
       return r.text().then(function(t) {
         var d = {};
         try { d = t ? JSON.parse(t) : {}; }
-        catch (e) { d = { error: 'server returned ' + r.status + ' (no PTools backend)' }; }
+        catch (e) { d = { error: 'server returned ' + r.status }; }
         return { status: r.status, body: d };
       });
     }).then(function(res) {
       var b = res.body || {};
       if (res.status === 200 && b.url) {
         window.open(b.url, '_blank');
-      } else if (b.error === 'ptools_server_url not configured') {
-        alert('PTools not configured.\nSet ui.ptools_server_url in workspace.yaml.');
       } else {
-        alert('PTools launch failed: ' + (b.error || res.status));
+        alert('Launch failed: ' + (b.error || res.status));
       }
-    }).catch(function(err) { alert('PTools launch failed: ' + err); });
+    }).catch(function(err) { alert('Launch failed: ' + err); });
   }
-  window._launchPtools = _launchPtools;
+  window._launchViewer = _launchViewer;
 
   function _loadAnalysesPage() {
     var container = document.getElementById('analyses-gallery');
     var countEl   = document.getElementById('viz-count');
     if (!container) return;
-    var _savedUrl = (window.DataSource && window.DataSource.savedVisualizationsUrl)
-      ? window.DataSource.savedVisualizationsUrl()
-      : '/api/saved-visualizations';
-    fetch(_savedUrl)
-      .then(function(r) { return r.json(); })
+    // Repo-contributed analysis viewers (name-agnostic): a package's
+    // workbench_viewers module supplies these; the workbench itself hardcodes
+    // nothing repo-specific. The Data Explorer is shown alongside them when a
+    // workspace contributes any viewer (metabolic-model workspaces like
+    // v2ecoli) — it doesn't apply to e.g. agent-based colony workspaces.
+    // NOTE: per-study comparison "report cards" are intentionally NOT shown
+    // here — they live on each study's detail page.
+    // Snapshot mode reads the static api/analysis-viewers.json bundle file; live
+    // mode hits the /api/analysis-viewers endpoint. Parse defensively via text()
+    // so a missing/HTML response degrades to "no viewers" instead of throwing a
+    // JSON SyntaxError into the page ("did not match the expected pattern").
+    var _viewersUrl = (window.DataSource && window.DataSource.analysisViewersUrl)
+      ? window.DataSource.analysisViewersUrl()
+      : '/api/analysis-viewers';
+    fetch(_viewersUrl)
+      .then(function(r) { return r.text(); })
+      .then(function(t) {
+        var data = {};
+        try { data = t ? JSON.parse(t) : {}; } catch (e) { data = {}; }
+        return data;
+      })
       .then(function(data) {
         data = data || {};
-        var saved  = data.saved || [];
-        var ptools = data.ptools || {};
+        var viewers = data.viewers || [];
         var cards = [];
-        // NOTE: per-study comparison "report cards" (e.g. config/standard) are
-        // intentionally NOT shown here — they live on each study's detail page.
-        // The Analyses tab is just the workspace analysis tools (Pathway Tools
-        // + Data Explorer).
-        // Pathway Tools (E. coli metabolic map) and the Data Explorer
-        // (timeseries / allocation / flux maps) are E. coli / metabolic-model
-        // analyses. Only show them for workspaces set up as such — detected via
-        // ui.ptools_server_url being configured (currently v2ecoli). They don't
-        // apply to e.g. agent-based colony workspaces (viva-munk).
-        var _ecoliAnalyses = !!(ptools && (ptools.configured || (ptools.studies || []).length));
-        if (_ecoliAnalyses) {
-          cards.push(_renderPtoolsCard(ptools));
+        viewers.forEach(function(v) {
+          if (v && v.kind === 'launcher') cards.push(_renderViewerCard(v));
+        });
+        var _hasViewers = viewers.length > 0;
+        if (_hasViewers) {
           cards.push(_renderExplorerCard());
         }
         if (!cards.length) {
-          container.innerHTML = '<p class="empty-state">No saved visualizations yet. Run a parsimony packing composite or a PTools analysis to populate this gallery.</p>';
+          container.innerHTML = '<p class="empty-state">No analysis viewers for this workspace. Analyses are contributed by the repo (a package\'s <code>workbench_viewers</code> module).</p>';
         } else {
           container.innerHTML = cards.join('');
         }
-        if (_ecoliAnalyses && window.Explorer) {
+        if (_hasViewers && window.Explorer) {
           var _em = document.getElementById('explorer-mount');
           if (_em) window.Explorer.mount(_em, {
             basePath: (window.DataSource && window.DataSource.basePath) ? window.DataSource.basePath() : '',
@@ -1443,7 +1587,7 @@
         if (countEl) countEl.textContent = _n ? '(' + _n + ')' : '';
       })
       .catch(function(err) {
-        container.innerHTML = '<p class="empty-state" style="color:#991b1b">Error loading saved visualizations: ' + _esc(String(err)) + '</p>';
+        container.innerHTML = '<p class="empty-state" style="color:#991b1b">Error loading analysis viewers: ' + _esc(String(err)) + '</p>';
       });
   }
   window._loadAnalysesPage = _loadAnalysesPage;
@@ -3361,10 +3505,19 @@
   // Vivarium left rail — collapse toggle (V4)
   // -------------------------------------------------------------------------
 
+  function _vivSyncRailToggleLabel(collapsed) {
+    var btn = document.getElementById('viv-rail-toggle');
+    if (!btn) return;
+    var label = collapsed ? 'Open sidebar' : 'Collapse sidebar';
+    btn.setAttribute('title', label);
+    btn.setAttribute('aria-label', label);
+  }
+
   function _vivToggleRail() {
     var rail = document.getElementById('viv-rail');
     if (!rail) return;
     var collapsed = rail.classList.toggle('viv-rail-collapsed');
+    _vivSyncRailToggleLabel(collapsed);
     try { localStorage.setItem('vivarium.rail-collapsed', collapsed ? '1' : '0'); } catch (e) {}
   }
   window._vivToggleRail = _vivToggleRail;
@@ -3372,10 +3525,12 @@
   function _vivRestoreRailState() {
     var stored = null;
     try { stored = localStorage.getItem('vivarium.rail-collapsed'); } catch (e) {}
-    if (stored === '1') {
+    var collapsed = stored === '1';
+    if (collapsed) {
       var rail = document.getElementById('viv-rail');
       if (rail) rail.classList.add('viv-rail-collapsed');
     }
+    _vivSyncRailToggleLabel(collapsed);
   }
   window._vivRestoreRailState = _vivRestoreRailState;
 
@@ -3397,7 +3552,10 @@
       : fetch('/api/investigations').then(function(r) { return r.json(); })
     ).catch(function() { return {investigations: []}; });
     var p2 = hasIsetUI
-      ? fetch('/api/investigation-summaries').then(function(r) { return r.json(); }).catch(function() { return {investigations: []}; })
+      ? (window.DataSource && window.DataSource.loadIsetList
+          ? window.DataSource.loadIsetList()
+          : fetch('/api/investigation-summaries').then(function(r) { return r.json(); })
+        ).catch(function() { return {investigations: []}; })
       : Promise.resolve({investigations: []});
     Promise.all([p1, p2]).then(function(arr) {
       window._investigations = arr[0].investigations || [];
@@ -3861,7 +4019,7 @@
     if (window._ceHistoryFetching) return;
     window._ceHistoryFetching = true;
     var id = window._ceCurrent.id;
-    fetch('/api/composite-runs?spec_id=' + encodeURIComponent(id))
+    fetch(_api('/api/composite-runs?spec_id=' + encodeURIComponent(id)))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var runs = data.runs || [];
@@ -3948,7 +4106,7 @@
     var body = document.getElementById('ce-compare-body');
     body.innerHTML = '<p class="empty-state">Loading&hellip;</p>';
     Promise.all(ids.map(function(id) {
-      return fetch('/api/composite-run/' + encodeURIComponent(id))
+      return fetch(_api('/api/composite-run/' + encodeURIComponent(id)))
         .then(function(r) { return r.json(); });
     })).then(function(results) {
       var runs = ids.map(function(id, i) {
@@ -4035,7 +4193,7 @@
       _ceShowState(run_id, step, cached);
       return;
     }
-    fetch('/api/composite-run/' + encodeURIComponent(run_id))
+    fetch(_api('/api/composite-run/' + encodeURIComponent(run_id)))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var trajectory = data.trajectory || [];
@@ -4183,8 +4341,8 @@
       p = window.DataSource.loadCompositeResolve(id);
     } else {
       // Live mode: fetch resolve endpoint with overrides.
-      var url = '/api/composite-resolve?id=' + encodeURIComponent(id) +
-        '&overrides=' + encodeURIComponent(JSON.stringify(window._ceCurrent.overrides));
+      var url = _api('/api/composite-resolve?id=' + encodeURIComponent(id) +
+        '&overrides=' + encodeURIComponent(JSON.stringify(window._ceCurrent.overrides)));
       // Parse defensively: an unguarded r.json() on a non-2xx / non-JSON
       // response throws "SyntaxError: The string did not match the expected
       // pattern" (Safari) → a useless "Network error". Unregistered refs 404;
@@ -4293,7 +4451,7 @@
     var el = document.getElementById('composite-explore-svg-legacy');
     if (!el) return;
     el.innerHTML = '<p style="color:#888">Loading SVG…</p>';
-    fetch('/api/composite-resolve?id=' + encodeURIComponent(ref))
+    fetch(_api('/api/composite-resolve?id=' + encodeURIComponent(ref)))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.svg) {
@@ -4461,7 +4619,7 @@
     var overrides = _ceCollectOverrides();
     var resultsEl = document.getElementById('ce-test-results');
     resultsEl.innerHTML = '<p class="empty-state">Starting run&hellip;</p>';
-    fetch('/api/composite-test-run', {
+    fetch(_api('/api/composite-test-run'), {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -4763,16 +4921,31 @@
       // divergence goes into the status-pill tooltip (not a separate line).
       var effStatus  = iset.effective_status || iset.status || 'planning';
       var authStatus = iset.status || 'planning';
-      var pillClass  = effStatus.replace(/[^a-z_]/g, '_');
-      var pillTip = (authStatus && authStatus !== effStatus)
-        ? 'effective: ' + effStatus + '  ·  intent: ' + authStatus
-        : 'status: ' + effStatus;
+      // Effective status is derived from the investigation's member studies
+      // (server: compute_investigation_status). Human label + color + a tooltip
+      // that says what each state actually MEANS — "running" (a study is
+      // executing right now) vs "in_progress" (partly done, nothing running)
+      // were the confusing pair.
+      var STATUS_META = {
+        planning:    {label:'Planned',     bg:'#f1f5f9', fg:'#475569', bd:'#cbd5e1', tip:'Not started — every study is still planned.'},
+        in_progress: {label:'In progress', bg:'#fef9c3', fg:'#854d0e', bd:'#fde047', tip:'Partly done — some studies have results, but none are running right now.'},
+        running:     {label:'Running now', bg:'#dbeafe', fg:'#1e40af', bd:'#93c5fd', tip:'A study is executing right now.'},
+        complete:    {label:'Complete',    bg:'#dcfce7', fg:'#166534', bd:'#86efac', tip:'All studies are done.'},
+        failed:      {label:'Failed',      bg:'#fee2e2', fg:'#991b1b', bd:'#fca5a5', tip:'A study failed or is invalid — needs attention.'}
+      };
+      var meta = STATUS_META[effStatus] || {label: effStatus, bg:'#f1f5f9', fg:'#475569', bd:'#cbd5e1', tip:'status: ' + effStatus};
+      var statusTip = meta.tip + (authStatus && authStatus !== effStatus ? '  ·  author intent: ' + authStatus : '');
+      // "Current branch" is NOT a status — it means this investigation is your
+      // current git checkout (what you're working on). Render it as a distinct
+      // context chip (indigo outline + branch glyph) so it doesn't read as the
+      // green "Complete" status it used to mimic.
+      var pillBase = 'font-size:0.72em;border-radius:9999px;padding:1px 9px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;';
       var currentPill = iset.current
-        ? '<span class="status-pill" style="font-size:0.72em;background:#dcfce7;color:#166534;border:1px solid #86efac">● current branch</span>'
+        ? '<span class="iset-here-chip" title="You are working on this investigation — it is the current git branch." style="' + pillBase + 'background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;font-weight:600">⎇ current branch</span>'
         : '';
       var statusPill = closed
-        ? '<span class="status-pill" style="font-size:0.78em;background:#e5e7eb;color:#4b5563;border:1px solid #d1d5db">Closed</span>'
-        : '<span class="status-pill ' + pillClass + '" style="font-size:0.78em" title="' + _esc(pillTip) + '">' + _esc(effStatus) + '</span>';
+        ? '<span class="status-pill" style="' + pillBase + 'background:#e5e7eb;color:#4b5563;border:1px solid #d1d5db">Closed</span>'
+        : '<span class="status-pill" style="' + pillBase + 'background:' + meta.bg + ';color:' + meta.fg + ';border:1px solid ' + meta.bd + '" title="' + _esc(statusTip) + '">' + _esc(meta.label) + '</span>';
       var cardStyle = 'background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;cursor:pointer;transition:box-shadow 0.1s,border-color 0.1s;' +
         (closed ? 'opacity:0.6;' : '');
       var filterStatus = (closed ? 'closed' : effStatus);
@@ -4827,18 +5000,44 @@
     _filterInvestigations();
   }
 
-  // Client-side filter for the landing list: matches the query against each
-  // card's title + slug + status (data-attrs), updates per-group counts, hides
-  // empty groups, and toggles the "no matches" line. No re-fetch, no re-render.
+  // Client-side filter for the Investigations landing list. UNIFIED with the
+  // side-rail studies search (same _tokensMatch engine, same AND-first/OR-
+  // fallback): an investigation card shows when the investigation itself OR any
+  // of its member studies matches — so searching "basal" surfaces the
+  // v2ecoli-vEcoli comparison investigation via its `basal` study. Updates
+  // per-group counts, hides empty groups, toggles the "no matches" line.
   function _filterInvestigations() {
     var input = document.getElementById('investigations-filter');
-    var q = ((input && input.value) || '').trim().toLowerCase();
+    var tokens = _tokenize(input && input.value);
+    var cards = document.querySelectorAll('#investigations-list .investigation-set-card');
+
+    // iset slug -> member study objects, for study-aware matching.
+    var studiesByIset = {};
+    (window._isetIndex || []).forEach(function(iset) {
+      studiesByIset[iset.name] = (iset.studies || [])
+        .map(function(slug) {
+          return (window._investigations || []).find(function(s) { return s.name === slug; });
+        }).filter(Boolean);
+    });
+
+    function _cardMatches(card, requireAll) {
+      var slug = card.getAttribute('data-iset-slug') || '';
+      var title = card.getAttribute('data-iset-title') || '';
+      var status = card.getAttribute('data-iset-status') || '';
+      if (_tokensMatch(_searchHay([title, slug, status]), tokens, requireAll)) return true;
+      return (studiesByIset[slug] || []).some(function(s) {
+        return _tokensMatch(_studyHay(s, title), tokens, requireAll);
+      });
+    }
+
+    // AND-first, OR-fallback across investigations AND their studies.
+    var requireAll = !!tokens.length && Array.prototype.some.call(cards, function(c) {
+      return _cardMatches(c, true);
+    });
+
     var anyVisible = false;
-    document.querySelectorAll('#investigations-list .investigation-set-card').forEach(function(card) {
-      var hay = (card.getAttribute('data-iset-title') || '') + ' ' +
-                (card.getAttribute('data-iset-slug') || '') + ' ' +
-                (card.getAttribute('data-iset-status') || '');
-      var show = !q || hay.indexOf(q) !== -1;
+    cards.forEach(function(card) {
+      var show = !tokens.length || _cardMatches(card, requireAll);
       card.style.display = show ? '' : 'none';
       if (show) anyVisible = true;
     });
@@ -5289,8 +5488,14 @@
         (function () {
           var slug = d.slug || d.name || name;
           if (!slug) { _renderInvestigationDag(d.studies || []); return; }
-          fetch('/api/investigation-graph?investigation=' + encodeURIComponent(slug))
-            .then(function (r) { if (!r.ok) throw new Error('graph ' + r.status); return r.json(); })
+          // Snapshot-aware: DataSource resolves to /api/investigation-graph/<slug>.json
+          // in the published read-only (a raw fetch of the query-string endpoint
+          // 404s there, dropping the evidence chains from every card).
+          (window.DataSource && window.DataSource.loadInvestigationGraph
+            ? window.DataSource.loadInvestigationGraph(slug)
+            : fetch('/api/investigation-graph?investigation=' + encodeURIComponent(slug))
+                .then(function (r) { if (!r.ok) throw new Error('graph ' + r.status); return r.json(); })
+          )
             .then(function (graph) {
               _renderInvestigationDag(d.studies || [], (graph && graph.chains) || {});
             })
@@ -5341,33 +5546,64 @@
       var bySev = d.summary.by_severity || {};
       var high = bySev.high || 0;
       var head = '⚠ Needs attention — ' + high + ' high, ' + total + ' total';
+      // Human-readable name + which study tab a click should land on, per kind.
+      // These are follow-ups the deterministic scan flags — NOT app updates.
+      var _naKindMeta = {
+        diagnostic_branch_needed: {label: 'Diagnostic study needed', tab: 'conclusions'},
+        next_action_ready:        {label: 'Next action ready',        tab: 'conclusions'},
+        invariant_regression:     {label: 'Invariant regression',     tab: 'conclusions'},
+        uncovered_ac:             {label: 'Acceptance criterion uncovered', tab: 'tests'},
+        open_feedback:            {label: 'Open expert feedback',      tab: 'overview'}
+      };
       var items = (d.items || []).map(function(it) {
         var st = _naSeverityStyle(it.severity);
         var ref = (it.study || it.ref || '').toString();
-        var kind = _esc((it.kind || '').toString());
+        var kindRaw = (it.kind || '').toString();
+        var meta = _naKindMeta[kindRaw] || {label: kindRaw.replace(/_/g, ' '), tab: 'conclusions'};
         var refHtml = ref ? '<code>' + _esc(ref) + '</code>' : '<span class="muted">—</span>';
         var hint = it.action_hint ? ' &nbsp;·&nbsp; ' + _esc(it.action_hint.toString()) : '';
         var titleLine = it.title
           ? '<div style="font-size:0.9em;margin-top:2px">' + _esc(it.title.toString()) + '</div>'
           : '';
-        return '<li style="margin-top:7px;padding-left:10px;border-left:3px solid ' + st.bd + '">'
+        // Clickable when the item names a study: open it at the relevant tab
+        // (verdict-based items → the conclusions/Decide tab).
+        var open = ref
+          ? ' role="button" tabindex="0" onclick="_openStudyInsideInvestigation(\'' + _esc(ref) + '\',\'' + meta.tab + '\')"'
+            + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}"'
+            + ' title="Open study &quot;' + _esc(ref) + '&quot; at its verdict"'
+          : '';
+        var arrow = ref ? '<span style="float:right;opacity:.55;font-size:0.9em">open →</span>' : '';
+        return '<li class="na-item' + (ref ? ' na-item-click' : '') + '"' + open
+          + ' style="margin-top:7px;padding:5px 8px 6px 10px;border-left:3px solid ' + st.bd + ';border-radius:4px'
+          + (ref ? ';cursor:pointer' : '') + '">'
+          + arrow
           + '<span style="color:' + st.dot + ';font-weight:700">●</span> '
-          + '<code style="font-size:0.85em">' + kind + '</code> &nbsp;·&nbsp; ' + refHtml + hint
+          + '<strong style="font-size:0.9em">' + _esc(meta.label) + '</strong> &nbsp;·&nbsp; ' + refHtml + hint
           + titleLine + '</li>';
       }).join('');
       var byKind = d.summary.by_kind || {};
       var breakdown = Object.keys(byKind).sort(function(a, b) {
         return (byKind[b] || 0) - (byKind[a] || 0);
-      }).map(function(k) { return (byKind[k] || 0) + '× ' + _esc(k); }).join(' &nbsp;·&nbsp; ');
+      }).map(function(k) {
+        var m = _naKindMeta[k];
+        return (byKind[k] || 0) + '× ' + _esc(m ? m.label : k.replace(/_/g, ' '));
+      }).join(' &nbsp;·&nbsp; ');
       var sev = _naSeverityStyle(high ? 'high' : 'medium');
+      // Plain-language explainer so the panel is self-describing (the user asked
+      // "what ARE these?"): they're automated follow-ups, and each is clickable.
+      var explain = '<div class="muted" style="font-size:0.84em;margin:2px 14px 4px;line-height:1.45">'
+        + 'Automated checks (no AI) that flag studies needing a follow-up — e.g. a study whose '
+        + 'verdict is <em>failed</em> or <em>needs-calibration</em> but has no diagnostic study seeded '
+        + 'to investigate why. Not app updates. <strong>Click any item</strong> to open that study at the verdict.</div>';
       container.innerHTML =
         '<details class="needs-attention-banner" style="margin:10px 0 14px 0;background:' + sev.bg
         + ';border:1px solid ' + sev.bd + ';border-left-width:5px;border-radius:6px;color:' + sev.col + '">'
         + '<summary style="padding:10px 14px;cursor:pointer;list-style:none;outline:none">'
-        + '<strong>' + head + '</strong> ' + lbl
-        + (breakdown ? '<div class="muted" style="font-size:0.82em;margin-top:5px">' + breakdown
-            + ' &nbsp;·&nbsp; <span style="opacity:.7;font-style:italic">click to expand</span></div>' : '')
+        + '<strong>' + head + '</strong>'
+        + '<span class="na-toggle-hint" style="opacity:.6;font-style:italic;font-size:0.85em;margin-left:8px">— click to expand</span>'
+        + (breakdown ? '<div class="muted" style="font-size:0.82em;margin-top:5px">' + breakdown + '</div>' : '')
         + '</summary>'
+        + explain
         + '<ul style="margin:4px 0 12px 0;padding:0 14px 0 18px;list-style:none;font-size:0.92em">'
         + items + '</ul>'
         + '</details>';
@@ -5557,6 +5793,11 @@
   // VERTICAL flow: y = topological depth (top = roots), x = within-depth slot.
   // Cards as absolute-positioned <div>s; edges as SVG cubic-Bezier paths.
   function _renderInvestigationDag(studies, chainsBySlug) {
+    _lastDagArgs = [studies, chainsBySlug];
+    var _opts = window._layoutOptsForBand(aigBand);
+    var shellEl = document.getElementById('investigation-dag-shell');
+    if (shellEl) { shellEl.classList.remove('aig-zoom-far','aig-zoom-mid','aig-zoom-near'); shellEl.classList.add(_opts.cls); }
+
     var nodesHost = document.getElementById('investigation-dag-nodes');
     var edgesSvg  = document.getElementById('investigation-dag-edges');
     nodesHost.innerHTML = '';
@@ -5610,8 +5851,8 @@
     // each card grows to fit its full text. We render once, measure each card,
     // then stack + center the columns by the measured heights (two passes) so
     // nothing is clipped.
-    var CARD_W = 210;
-    var X_GAP = 64, Y_GAP = 22;
+    var CARD_W = _opts.cardW;
+    var X_GAP = _opts.xGap, Y_GAP = 22;
     var PAD_X = 24, PAD_Y = 16;
     var svgNS = 'http://www.w3.org/2000/svg';
     var pos = {};
@@ -5664,18 +5905,13 @@
 
       var node = document.createElement('div');
       node.className = 'iset-dag-node';
+      // Single click opens the full study view directly — no quick-look
+      // side-card, no double-click.
       node.onclick = function() {
-        if (window._openInvestigationDrawer) window._openInvestigationDrawer('study', s);
-        else _openStudyInsideInvestigation(s.name);
-      };
-      // Double-click opens the full study directly (dismisses the quick-look drawer).
-      node.ondblclick = function() {
-        var _drawer = document.getElementById('investigation-detail-drawer');
-        if (_drawer) _drawer.style.display = 'none';
         _openStudyInsideInvestigation(s.name);
       };
       node.title = s.name + ' — ' + confidence + (claim ? '\n\nFinds: ' + claim : '') +
-        '\n\nClick for a quick look · double-click to open the study';
+        '\n\nClick to open the study';
       var x = PAD_X + depth[s.name] * (CARD_W + X_GAP);
       node.style.cssText =
         'position:absolute;left:' + x + 'px;top:0px;' +
@@ -5697,30 +5933,44 @@
         '<div style="display:flex;align-items:flex-start;gap:6px">' +
           '<span style="color:' + ss.color + ';font-size:1.05em;line-height:1.1;flex:none">' + ss.icon + '</span>' +
           '<strong style="font-size:0.85em;line-height:1.25;color:#1e293b;flex:1">' + _esc(prettyTitle) + '</strong>' +
-          '<span style="font-size:0.62em;font-weight:700;color:' + ss.color + ';white-space:nowrap;margin-top:1px">' + _esc(confidence) + '</span>' +
+          '<span class="aig-status-badge" role="button" tabindex="0" title="Why: open this study\'s finding & evidence" ' +
+            'style="font-size:0.62em;font-weight:700;color:' + ss.color + ';white-space:nowrap;margin-top:1px;cursor:pointer;text-decoration:underline dotted">' +
+            _esc(confidence) + '</span>' +
         '</div>' +
-        (asks
+        (_opts.asks && asks
           ? '<div style="font-size:0.72em;margin-top:7px;line-height:1.35;color:#64748b;' + _clamp(2) + '">' +
               '<span style="font-weight:600;color:#475569">Asks:</span> ' + _esc(asks) + '</div>'
           : '') +
-        '<div style="font-size:0.72em;margin-top:5px;line-height:1.35;color:#64748b;' + _clamp(5) + '">' +
-          '<span style="font-weight:600;color:#475569">Finds:</span> ' +
-          (claim ? _esc(claim) : '<em style="color:#94a3b8">pending evidence</em>') +
-        '</div>' +
-        (moreN ? '<div style="font-size:0.72em;margin-top:2px;color:#94a3b8">+' + moreN + ' more</div>' : '') +
-        followUpsChip +
-        ((chainsBySlug && typeof window._chainBlockHtml === 'function')
+        (_opts.finds
+          ? '<div style="font-size:0.72em;margin-top:5px;line-height:1.35;color:#64748b;' + _clamp(5) + '">' +
+              '<span style="font-weight:600;color:#475569">Finds:</span> ' +
+              (claim ? _esc(claim) : '<em style="color:#94a3b8">pending evidence</em>') +
+            '</div>'
+          : '') +
+        (_opts.finds && moreN ? '<div style="font-size:0.72em;margin-top:2px;color:#94a3b8">+' + moreN + ' more</div>' : '') +
+        (_opts.followups ? followUpsChip : '') +
+        (_opts.chain && chainsBySlug && typeof window._chainBlockHtml === 'function'
           ? window._chainBlockHtml(chainsBySlug[s.name]) : '');
       node._followUps = followUps;
       nodesHost.appendChild(node);
+      var _badge = node.querySelector('.aig-status-badge');
+      if (_badge) {
+        var _openReason = function (ev) {
+          ev.stopPropagation();
+          // The quick-look side-card is gone — the verdict badge opens the full
+          // study (its findings/evidence live there).
+          _openStudyInsideInvestigation(s.name);
+        };
+        _badge.addEventListener('click', _openReason);
+        _badge.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); _openReason(ev); } });
+      }
       if (chainsBySlug && window._groupClaims && window._openInvestigationDrawer) {
         (function (study, chain) {
           var claims = window._groupClaims(chain);
           node.querySelectorAll('.aig-claim-row').forEach(function (row) {
             row.addEventListener('click', function (ev) {
               ev.stopPropagation();
-              var idx = parseInt(row.getAttribute('data-claim-index'), 10);
-              if (claims[idx]) window._openInvestigationDrawer('claim', { claim: claims[idx], study: study });
+              _openStudyInsideInvestigation(study.name);
             });
           });
         })(s, chainsBySlug[s.name]);
@@ -5843,6 +6093,36 @@
     }
   }
   window._renderInvestigationDag = _renderInvestigationDag;
+
+  function _setAigBand(b) {
+    var nb = Math.max(0, Math.min(2, b | 0));
+    var sl = document.getElementById('aig-zoom-slider');
+    if (sl && String(sl.value) !== String(nb)) sl.value = String(nb);
+    // No band change → keep the slider synced (above) but skip the re-render.
+    if (nb === aigBand) return;
+    aigBand = nb;
+    if (_lastDagArgs) _renderInvestigationDag(_lastDagArgs[0], _lastDagArgs[1]);
+  }
+  window._setAigBand = _setAigBand;
+
+  // Wheel semantic-zooms bands ONLY when the pointer is over a study card; over
+  // the graph background the wheel is left alone so the page scrolls normally
+  // (so you can scroll past the graph without it hijacking the wheel). One notch
+  // per gesture, with a threshold + cooldown so a single scroll doesn't skip
+  // bands.
+  (function _wireAigWheel() {
+    var lastWheel = 0;
+    document.addEventListener('wheel', function (ev) {
+      var card = ev.target && ev.target.closest && ev.target.closest('.iset-dag-node');
+      if (!card) return;                                  // background → page scrolls
+      ev.preventDefault();
+      var now = Date.now();
+      if (now - lastWheel < 220) return;                  // cooldown between steps
+      if (Math.abs(ev.deltaY) < 4) return;
+      lastWheel = now;
+      _setAigBand(aigBand + (ev.deltaY > 0 ? -1 : 1));    // scroll down = zoom out
+    }, { passive: false });
+  })();
 
   // ── DAG follow-ups popover ───────────────────────────────────────────────
   // Surfaced when phase=Decide. Lists each follow_up_studies entry with a
@@ -6064,22 +6344,26 @@
   // Click a DAG node → load the full study in an in-page iframe BELOW the
   // DAG (no jump to the legacy Studies tab). The iframe is the same
   // /studies/<name> route the standalone embed uses.
-  function _openStudyInsideInvestigation(name) {
+  function _openStudyInsideInvestigation(name, tab) {
     var panel = document.getElementById('investigation-study-embed-panel');
     var frame = document.getElementById('investigation-study-embed-frame');
     var nameEl = document.getElementById('investigation-study-embed-name');
+    // Optional deep-link to a specific study tab (e.g. a Needs-attention item
+    // pointing at the verdict opens ?tab=conclusions).
+    var href = _studyHref(name) + (tab ? (_studyHref(name).indexOf('?') >= 0 ? '&' : '?') + 'tab=' + encodeURIComponent(tab) : '');
     if (!panel || !frame) {
       // This view (e.g. the report / deep-link investigation view) has no
       // in-place study-embed panel — navigate to the study page directly so the
       // sidebar study link still works instead of dying silently.
-      window.location = _studyHref(name);
+      window.location = href;
       return;
     }
     window._currentInvestigationStudy = name;
-    frame.src = _studyHref(name);
+    frame.src = href;
     if (nameEl) nameEl.textContent = name;
     panel.style.display = '';
     panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+    _fitEmbedToViewport(frame, panel, 600);
   }
   window._openStudyInsideInvestigation = _openStudyInsideInvestigation;
 
@@ -6139,9 +6423,13 @@
           .then(function(j) { return j.entries || []; })
           .catch(function() { return []; });
         var chartFetches = (iset.studies || []).map(function(s) {
-          return fetch('/api/study-charts/' + encodeURIComponent(s.name))
-            .then(function(r) { return r.ok ? r.json() : {charts: []}; })
-            .then(function(j) { return {name: s.name, charts: j.charts || []}; })
+          // Via DataSource so snapshot mode reads api/study-charts/<slug>.json at
+          // the bundle basePath; raw fetch would 404 on a hosted read-only site.
+          return ((window.DataSource && window.DataSource.loadStudyCharts)
+            ? window.DataSource.loadStudyCharts(s.name)
+            : fetch('/api/study-charts/' + encodeURIComponent(s.name))
+                .then(function(r) { return r.ok ? r.json() : {charts: []}; }))
+            .then(function(j) { return {name: s.name, charts: (j && j.charts) || []}; })
             .catch(function() { return {name: s.name, charts: []}; });
         });
         // Current coordinated generation — stamps the report's provenance
@@ -8508,7 +8796,7 @@
                +   sweepChart
                +   refBlock
                +   (f.next_action ? '<div class="finding-next"><strong>→ Next:</strong> ' + _multiline(f.next_action) + '</div>' : '')
-               +   (f.seeded_study ? '<div class="finding-seeded"><strong>→ seeded study:</strong> <a href="/studies/' + encodeURIComponent(f.seeded_study) + '">' + _h(f.seeded_study) + '</a></div>' : '')
+               +   (f.seeded_study ? '<div class="finding-seeded"><strong>→ seeded study:</strong> <a href="' + _studyHref(f.seeded_study) + '">' + _h(f.seeded_study) + '</a></div>' : '')
                +   techDisclosure
                + '</div>';
         }
@@ -8556,7 +8844,9 @@
         var isSnap = cfg.mode === 'snapshot';
         var origin = (typeof location !== 'undefined' && location.origin
                       && /^https?:/.test(location.origin)) ? location.origin : '';
-        var base = origin + (isSnap ? (cfg.basePath || '') : '');
+        // basePath applies in both snapshot and live-under-a-prefix (/workbench);
+        // empty in normal local serving.
+        var base = origin + (cfg.basePath || '');
         var stateUrl = isSnap
           ? base + '/api/composite-state/' + encodeURIComponent(composite) + '.json'
           : base + '/api/composite-state?ref=' + encodeURIComponent(composite);
@@ -10066,6 +10356,38 @@
         ? '<p class="reproduce-line muted small">Reproduce: ' + _runChip(_reproBase) + '</p>'
         : '';
 
+      // FRAMEWORK FIX: the v4 narrative-spine renderer had no charts/embeds
+      // section, so any study that did not trip isV3 (a schema_version 3/4
+      // study authored with findings/tests/baseline but none of
+      // purpose|simulation_set|behavior_tests|pipeline_gate|readouts|
+      // implementation_requirements) silently dropped its figures even though
+      // /api/study-charts returned them. Render both here too, mirroring
+      // v3StudySection, so charts/visualizations are never lost by the routing.
+      var v4Charts = (chartsByStudy && chartsByStudy[s.name]) || [];
+      var v4ChartsHtml = v4Charts.length
+        ? '<div id="study-' + slug + '-charts"><h3>Visualisations from the latest run</h3>'
+          + _renderChartCardsHtml(v4Charts, slug) + '</div>'
+        : '';
+      var v4Embeds = (embedsByStudy && embedsByStudy[s.name]) || [];
+      var v4EmbedsHtml = v4Embeds.length
+        ? '<div class="study-embeds" id="study-' + slug + '-embeds"><h3>Interactive visualizations</h3>'
+          + v4Embeds.map(function(emb) {
+              var escaped = String((emb && emb.html) || '')
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+              var frame = escaped
+                ? '<iframe srcdoc="' + escaped + '" loading="lazy" scrolling="no" '
+                  + 'style="width:100%;border:0;min-height:420px" '
+                  + 'title="' + _h((emb && emb.name) || 'visualization') + '"></iframe>'
+                : (emb && emb.url
+                    ? '<p><a href="' + _h(emb.url) + '">' + _h(emb.name || emb.url) + '</a></p>'
+                    : '');
+              return '<div class="study-embed">'
+                + ((emb && emb.title) ? '<div class="chart-title" style="font-weight:600;margin-bottom:4px">' + _h(emb.title) + '</div>' : '')
+                + frame + '</div>';
+            }).join('')
+          + '</div>'
+        : '';
+
       return ''
         + '<details class="study-fold" id="study-fold-' + slug + '">'
         + foldSummary
@@ -10085,6 +10407,9 @@
                     + '<p class="muted small">Each row is a precise, testable prediction. Status indicates whether the supporting code is in place today (implemented) or gated on upstream work (gated / stub).</p>'
                     + '<table class="eb"><thead><tr><th>Name</th><th>Prediction</th><th>Status</th><th>Citations</th></tr></thead>'
                     + '<tbody>' + ebRows + '</tbody></table></div>' : '')
+
+        +   v4EmbedsHtml       // Interactive visualizations (embed_visualizations)
+        +   v4ChartsHtml       // Charts / figures from the latest run (framework fix)
 
         +   (variants ? '<div id="' + sidVa + '"><h3>Variants (perturbations to be tested)</h3>' + variants + '</div>' : '')
 
@@ -11834,32 +12159,137 @@
       });
       groups.push({name: iset.name, title: iset.title || iset.name, studies: members});
     });
-    // Scope the rail to a SINGLE investigation. We never render the
-    // "Ungrouped" bucket or an all-investigations list here: the rail shows
-    // either the current investigation's studies or a chooser. (Orphan studies
-    // that belong to no investigation are intentionally not surfaced here.)
+    // Show EVERY study in the repo, grouped by investigation. The active
+    // investigation (window._currentIsetSlug, which follows the current
+    // branch/context) is rendered first and expanded; all other
+    // investigations follow as collapsed groups. Studies that belong to no
+    // investigation collect in a final "Ungrouped" group so nothing is hidden.
     var currentSlug = window._currentIsetSlug || '';
-    var currentGroup = currentSlug
-      ? groups.filter(function(g) { return g.name === currentSlug; })[0] || null
-      : null;
+    var railDepthMap = window._investigationsDepth || {};
 
-    var picker = _railInvestigationPicker(currentSlug);
+    // Active investigation first; the rest by topological depth then title.
+    var ordered = groups.slice().sort(function(a, b) {
+      if (a.name === currentSlug) return -1;
+      if (b.name === currentSlug) return 1;
+      var da = railDepthMap[a.name] || 0, db = railDepthMap[b.name] || 0;
+      return da - db || String(a.title || a.name).localeCompare(String(b.title || b.name));
+    });
 
-    if (!currentGroup) {
-      // No valid current investigation → picker + placeholder, no study rows.
-      host.innerHTML = picker
-        + '<div class="viv-rail-empty" style="font-size:0.85em;color:#94a3b8;'
-        + 'padding:6px 14px;font-style:italic">Choose an investigation to see its studies.</div>';
-      return;
+    // Studies not a member of any investigation.
+    var ungrouped = window._investigations.filter(function(s) { return !seen[s.name]; });
+    if (ungrouped.length) {
+      ungrouped.sort(function(a, b) { return String(a.name).localeCompare(String(b.name)); });
+      ordered.push({ name: '__ungrouped__', title: 'Ungrouped', studies: ungrouped, _ungrouped: true });
     }
 
-    // Current investigation → its studies as a flat list under the picker.
-    host.innerHTML = picker
-      + '<div class="rail-iset-name" title="' + _esc(currentGroup.title || currentGroup.name) + '"'
-      + ' onclick="window._railOpenInvestigationDetail(\'' + _esc(currentGroup.name) + '\');"'
-      + ' style="cursor:pointer;">' + _esc(currentGroup.title || currentGroup.name) + '</div>'
-      + currentGroup.studies.map(function(s) { return _railStudyItem(s); }).join('');
+    var hasActive = ordered.some(function(g) { return g.name === currentSlug; });
+
+    function _railGroupHtml(g, forceOpen) {
+      var isActive = g.name === currentSlug;
+      // Collapsed unless active, or the caller forces it open (first group when
+      // there is no active investigation), so the rail opens on something.
+      var collapsed = (isActive || forceOpen) ? '' : ' collapsed';
+      var activeCls = isActive ? ' rail-iset-active' : '';
+      var clickName = g._ungrouped
+        ? ''
+        : ' onclick="window._railOpenInvestigationDetail(\'' + _esc(g.name) + '\');event.stopPropagation();"';
+      var nameStyle = g._ungrouped ? '' : 'cursor:pointer;';
+      return '<div class="viv-rail-investigations-group' + collapsed + activeCls + '" data-iset="' + _esc(g.name) + '">'
+        + '<div class="viv-rail-investigations-group-header" onclick="_vivToggleInvGroup(this)"'
+        + ' title="' + _esc(g.title || g.name) + (g._ungrouped ? '' : ' — open investigation') + '">'
+        + '<span class="viv-rail-investigations-group-arrow viv-arrow">▾</span>'
+        + '<span class="viv-rail-investigations-group-name" style="' + nameStyle + '"' + clickName + '>'
+        + _esc(g.title || g.name) + '</span>'
+        + '<span class="viv-rail-investigations-group-count">' + g.studies.length + '</span>'
+        + '</div>'
+        + '<div class="viv-rail-investigations-group-items">'
+        + (g.studies.length
+            ? g.studies.map(function(s) { return _railStudyItem(s, { indent: true }); }).join('')
+            : '<div class="viv-rail-empty" style="font-size:0.82em;color:#94a3b8;'
+              + 'padding:4px 14px 4px 28px;font-style:italic">No studies</div>')
+        + '</div>'
+        + '</div>';
+    }
+
+    // Live study-search filter (the #viv-rail-study-search input). Token-AND
+    // over a broad per-study haystack (name/title/objective/tags + the group
+    // title), so e.g. "basal simulation" finds the `basal` study in the
+    // v2ecoli-vEcoli comparison investigation. While searching, non-matching
+    // groups are hidden and matching groups are force-expanded so hits show.
+    var q = (window._railStudyQuery || '').trim().toLowerCase();
+    var tokens = q ? q.split(/\s+/) : [];
+    var searching = tokens.length > 0;
+
+    // AND-first, OR-fallback. Prefer studies matching EVERY token (precise); but
+    // if nothing matches all tokens, fall back to matching ANY token so a natural
+    // phrase like "basal simulation" still surfaces the `basal` study even when
+    // "simulation" appears in none of its fields.
+    var requireAll = searching && ordered.some(function(g) {
+      return g.studies.some(function(s) { return _studyMatchesQuery(s, g.title, tokens, true); });
+    });
+
+    var html = ordered.map(function(g, i) {
+      var studies = g.studies;
+      if (searching) {
+        studies = g.studies.filter(function(s) {
+          return _studyMatchesQuery(s, g.title, tokens, requireAll);
+        });
+        if (!studies.length) return '';   // hide groups with no match
+        g = { name: g.name, title: g.title, studies: studies, _ungrouped: g._ungrouped };
+      }
+      // While searching, force groups open so matches are visible. Otherwise:
+      // with no active investigation, open the first group so the rail isn't
+      // entirely collapsed on load.
+      return _railGroupHtml(g, searching || (!hasActive && i === 0));
+    }).join('');
+
+    if (!html && searching) {
+      html = '<div class="viv-rail-empty" style="font-size:0.85em;color:#94a3b8;'
+           + 'padding:6px 14px;font-style:italic">No studies match “' + _esc(q) + '”.</div>';
+    }
+
+    host.innerHTML = html
+      || '<div class="viv-rail-empty" style="font-size:0.85em;color:#94a3b8;'
+       + 'padding:6px 14px;font-style:italic">No studies yet.</div>';
   }
+
+  // A study matches the rail search when EVERY whitespace-delimited token of the
+  // query is a substring of its combined searchable text (study fields + the
+  // investigation/group title it's rendered under). Broad + forgiving on purpose.
+  // ── Shared search engine ────────────────────────────────────────────
+  // ONE implementation for every search box (side-rail studies, Investigations
+  // tab, Studies grid) so behaviour never diverges. Token match with the caller
+  // deciding AND (requireAll) vs OR across its candidate set — enabling the
+  // AND-first/OR-fallback pattern used everywhere.
+  function _tokenize(q) {
+    q = String(q || '').trim().toLowerCase();
+    return q ? q.split(/\s+/) : [];
+  }
+  function _searchHay(parts) {
+    return parts.filter(Boolean).map(String).join(' ').toLowerCase();
+  }
+  function _tokensMatch(hay, tokens, requireAll) {
+    if (!tokens || !tokens.length) return true;
+    return requireAll
+      ? tokens.every(function(t) { return hay.indexOf(t) !== -1; })
+      : tokens.some(function(t) { return hay.indexOf(t) !== -1; });
+  }
+  // A study's searchable haystack (+ optional extra text, e.g. its group title).
+  function _studyHay(s, extra) {
+    return _searchHay([s.name, s.title, s.slug, s.objective, s.question,
+      s.description, s.summary, s.status,
+      Array.isArray(s.tags) ? s.tags.join(' ') : '', extra]);
+  }
+
+  function _studyMatchesQuery(s, groupTitle, tokens, requireAll) {
+    return _tokensMatch(_studyHay(s, groupTitle), tokens, requireAll);
+  }
+
+  // Study-search input handler: store the query and re-render the rail groups.
+  window._filterRailStudies = function(value) {
+    window._railStudyQuery = String(value || '');
+    _renderRailInvestigationGroups();
+  };
 
   // Per-workspace localStorage key for the remembered investigation. The URL
   // path differs per hosted workspace (base-path), so it namespaces cleanly.
@@ -11960,16 +12390,16 @@
     var grid = document.getElementById('investigations-grid');
     if (!grid) return;
     var f = window._investigationsFilter;
-    var q = f.search.toLowerCase();
     var dag = _buildInvestigationDag(window._investigations);
     window._investigationsChildren = dag.children;
     window._investigationsDepth = dag.depth;
+    // Same shared engine + AND-first/OR-fallback as the rail / Investigations tab.
+    var tokens = _tokenize(f.search);
+    var requireAll = !!tokens.length && window._investigations.some(function(inv) {
+      return _tokensMatch(_studyHay(inv), tokens, true);
+    });
     var filtered = window._investigations.filter(function(inv) {
-      if (q) {
-        var hay = (inv.name + ' ' + (inv.description || '') + ' ' +
-                    (inv.tags || []).join(' ')).toLowerCase();
-        if (hay.indexOf(q) < 0) return false;
-      }
+      if (tokens.length && !_tokensMatch(_studyHay(inv), tokens, requireAll)) return false;
       if (f.tags.size > 0) {
         var match = (inv.tags || []).some(function(t) { return f.tags.has(t); });
         if (!match) return false;
@@ -14391,10 +14821,18 @@
       'title="emitter / persistence format">' + _escSim(t) + '</span>';
   }
 
+  // Single source for the Origin column's text — used by BOTH the pill and the
+  // sort key so they can't diverge. `remote_origin` is an OBJECT
+  // ({deployment, simulation_id, …}) or null; it is never a bare string.
+  function _simOriginLabel(row) {
+    var o = row && row.remote_origin;
+    return o ? String(o.deployment || 'remote') : 'local';
+  }
+
   function _simOriginPill(row) {
     var o = row && row.remote_origin;
     if (!o) return '<span class="origin-pill origin-local" title="local run">local</span>';
-    var dep = o.deployment || 'remote';
+    var dep = _simOriginLabel(row);
     var tip = 'Remote run on ' + dep + ' (AWS GovCloud)'
       + (o.simulation_id != null ? ' — sim ' + o.simulation_id : '')
       + (o.experiment_id ? '\nexperiment: ' + o.experiment_id : '')
@@ -14451,6 +14889,19 @@
   }
   window._openSimulationInExplorer = _openSimulationInExplorer;
 
+  /** Open a Simulations-DB row: the associated STUDY when the run has one, else
+   *  the Composite Explorer (bigraph-loom) seeded to this run's results.
+   *  Study-associated runs NAVIGATE to the study page — not _openStudyEmbedded,
+   *  whose embed panel lives in a different page section that is hidden while the
+   *  Simulations page is active, so it silently did nothing here. */
+  function _openSimulation(row) {
+    if (!row) return;
+    var study = _simStudy(row);
+    if (study) { window.location = _studyHref(study); return; }
+    if (row.run_id && row.spec_id) { _openSimulationInExplorer(row.run_id, row.spec_id); }
+  }
+  window._openSimulation = _openSimulation;
+
   function _renderSimRow(row) {
     var inv = _simInvestigation(row);
     var invCell = inv
@@ -14467,27 +14918,27 @@
     // Actions: if the run belongs to a study → open its Runs tab at the run;
     // else if it has a spec_id → open in the Composite Explorer. The
     // {simulations} shape carries spec_id + db_path so both are reconstructable.
-    var specId = row.spec_id || '';
     var studySlug = _simStudy(row);
-    var openBtn;
-    if (studySlug) {
-      openBtn = '<a href="/studies/' + encodeURIComponent(studySlug) + '#run-' + encodeURIComponent(runId) + '" ' +
-        'class="action-btn js-authoring" title="View this run\'s results in the study" ' +
-        'style="text-decoration:none;">Open</a>';
-    } else if (specId) {
-      openBtn = '<a href="?id=' + encodeURIComponent(specId) +
-          '&run_id=' + encodeURIComponent(runId) + '#composite-explore" ' +
-          'class="action-btn js-authoring" title="Open in Composite Explorer" ' +
-          'style="text-decoration:none;" ' +
-          'onclick="event.preventDefault(); _openSimulationInExplorer(\'' +
-            _escSim(runId) + '\', \'' + _escSim(specId) + '\');">Open</a>';
-    } else {
-      openBtn = '';
-    }
-    var deleteBtn = '<button class="action-btn js-authoring" title="Delete simulation" ' +
-      'onclick="_deleteSimulationRun(\'' + _escSim(runId) + '\')">🗑</button>';
+    var runIdEnc = encodeURIComponent(runId);
+    // Download the run's RAW EMITTER DATA (native zarr/parquet store, else the
+    // SQLite runs.db) as a zip. The server resolves the on-disk store from the
+    // run_id via its own workspace scan — no path is trusted from the client.
+    // Only offered when the run has a local store; yaml-referenced history runs
+    // whose artifacts aren't in this checkout have nothing to download.
+    var hasLocalData = !!(row.store_path || row.db_path);
+    var emitterDl = (runId && hasLocalData)
+      ? '<a class="action-btn js-authoring" title="Download this run\'s raw emitter data (.zip)" ' +
+        'href="/api/simulation-run-download?run_id=' + runIdEnc + '" download style="text-decoration:none;">⬇ Data</a>'
+      : '';
+    // Download the ANALYSIS-FLUSH OUTPUT (analyses / figures / report cards) for
+    // the run's study, when the run belongs to one.
+    var analysisDl = studySlug
+      ? '<a class="action-btn js-authoring" title="Download the analysis-flush output for this run\'s study (.zip)" ' +
+        'href="/api/study-analysis-zip?study=' + encodeURIComponent(studySlug) + '" download style="text-decoration:none;">⬇ Analysis</a>'
+      : '';
     return (
-      '<tr data-run-id="' + _escSim(runId) + '" style="border-bottom:1px solid #f3f4f6;">' +
+      '<tr data-run-id="' + _escSim(runId) + '" style="border-bottom:1px solid #f3f4f6;cursor:pointer;" ' +
+        'title="Click to open this run — its study, or the Composite Explorer">' +
       '<td style="padding:6px 8px; overflow-wrap:anywhere;">' + invCell + '</td>' +
       '<td style="padding:6px 8px; overflow-wrap:anywhere;">' + studyCell + '</td>' +
       '<td style="padding:6px 8px; overflow:hidden;"><code style="font-size:11px; color:#6b7280; ' +
@@ -14499,10 +14950,57 @@
       '<td style="padding:6px 8px; color:#6b7280;">' + _escSim(_simFmtTime(timeSec)) + '</td>' +
       '<td style="padding:6px 8px;">' + _simStatusChip(row.status) + '</td>' +
       '<td style="padding:6px 8px; text-align:center; white-space:nowrap;">' +
-        openBtn + (openBtn && deleteBtn ? ' ' : '') + deleteBtn + '</td>' +
+        emitterDl + (emitterDl && analysisDl ? ' ' : '') + analysisDl + '</td>' +
       '</tr>'
     );
   }
+
+  // Client-side column sort for the Simulations DB table. Purely a rendering
+  // concern on top of the server-ordered (newest-first) _simRows — clicking a
+  // sortable <th> toggles asc/desc and re-runs _applySimFilter, which applies
+  // _sortSimRows to the filtered rows before rendering.
+  let _simSortState = { key: null, dir: 'desc' };
+
+  function _simSortValue(row, key) {
+    if (key === 'time') return row.completed_at || row.started_at || 0;
+    if (key === 'emitter_type') return String(row.emitter_type || '').toLowerCase();
+    // remote_origin is an OBJECT — read the same label the pill renders. A bare
+    // `.toLowerCase()` on it threw and aborted the whole re-sort (Origin looked
+    // like it "didn't sort"). String() on every branch keeps a stray non-string
+    // value from ever breaking the comparator again.
+    if (key === 'origin') return _simOriginLabel(row).toLowerCase();
+    if (key === 'study') return String(_simStudy(row) || '').toLowerCase();
+    if (key === 'investigation') return String(_simInvestigation(row) || '').toLowerCase();
+    if (key === 'run') return String(row.sim_name || row.label || row.run_id || '').toLowerCase();
+    if (key === 'status') return String(row.status || '').toLowerCase();
+    return '';
+  }
+
+  function _sortSimRows(rows, key, dir) {
+    if (!key) return rows;
+    const s = rows.slice().sort(function (a, b) {
+      var va = _simSortValue(a, key), vb = _simSortValue(b, key);
+      if (va < vb) return -1;
+      if (va > vb) return 1;
+      return 0;
+    });
+    return dir === 'desc' ? s.reverse() : s;
+  }
+
+  function _onSimHeaderClick(th) {
+    var key = th.getAttribute('data-sort-key');
+    if (!key) return;
+    if (_simSortState.key === key) {
+      _simSortState.dir = _simSortState.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      _simSortState = { key: key, dir: 'asc' };
+    }
+    document.querySelectorAll('#page-simulations th[data-sort-key]')
+      .forEach(function (h) { h.removeAttribute('data-sort-dir'); });
+    th.setAttribute('data-sort-dir', _simSortState.dir);   // CSS ::after renders ▲/▼
+    _applySimFilter();
+  }
+  window._onSimHeaderClick = _onSimHeaderClick;
 
   // Populate the Study + Emitter dropdowns from the data (preserving any
   // current selection), then render rows through the active filters.
@@ -14516,6 +15014,7 @@
     var studyVal = studySel ? studySel.value : '';
     var emitterVal = emitterSel ? emitterSel.value : '';
 
+    // Dropdown filters first (Investigation / Study / Emitter).
     var visible = rows.filter(function (r) {
       if (invVal && _simInvestigation(r) !== invVal) return false;
       if (studyVal && _simStudy(r) !== studyVal) return false;
@@ -14523,10 +15022,50 @@
       return true;
     });
 
+    // Free-text search (#sim-text-filter) over each run's searchable fields
+    // (study, investigation, run name/label/id, spec, status, emitter, origin),
+    // combined with the dropdowns above. AND-first, OR-fallback: prefer runs
+    // matching EVERY token; if none do, match ANY token so a natural phrase
+    // still surfaces relevant runs.
+    var textEl = document.getElementById('sim-text-filter');
+    var textTokens = textEl && textEl.value.trim()
+      ? textEl.value.trim().toLowerCase().split(/\s+/) : [];
+    if (textTokens.length) {
+      var _simHay = function (r) {
+        return [
+          _simStudy(r), _simInvestigation(r), r.status, r.emitter_type,
+          _simOriginLabel(r), r.sim_name, r.label, r.run_id, r.spec_id
+        ].filter(Boolean).join(' ').toLowerCase();
+      };
+      var andRows = visible.filter(function (r) {
+        var h = _simHay(r);
+        return textTokens.every(function (t) { return h.indexOf(t) !== -1; });
+      });
+      visible = andRows.length ? andRows : visible.filter(function (r) {
+        var h = _simHay(r);
+        return textTokens.some(function (t) { return h.indexOf(t) !== -1; });
+      });
+    }
+
+    visible = _sortSimRows(visible, _simSortState.key, _simSortState.dir);
+
     var tbody = document.getElementById('sim-tbody');
     var table = document.getElementById('sim-table');
     var empty = document.getElementById('sim-empty');
     if (tbody) tbody.innerHTML = visible.map(_renderSimRow).join('');
+    // Row click opens the run (delegated once, survives re-renders); the
+    // download links/buttons keep their own behaviour.
+    if (tbody && !tbody._simClickWired) {
+      tbody._simClickWired = true;
+      tbody.addEventListener('click', function (e) {
+        if (e.target.closest('a, button, .action-btn')) return;
+        var tr = e.target.closest('tr[data-run-id]');
+        if (!tr) return;
+        var rid = tr.getAttribute('data-run-id');
+        var row = (window._simRows || []).filter(function (r) { return String(r.run_id) === rid; })[0];
+        if (row) _openSimulation(row);
+      });
+    }
     if (table) table.style.display = visible.length ? '' : 'none';
     if (empty) empty.style.display = visible.length ? 'none' : '';
 
@@ -14542,6 +15081,9 @@
       }
     }
   }
+
+  // Exposed for the #sim-text-filter input's inline oninput handler.
+  window._applySimFilter = _applySimFilter;
 
   // Rebuild the Study + Emitter <select> option lists from the current data.
   function _populateSimFilters() {
@@ -14931,12 +15473,12 @@
 
     function tick() {
       Promise.all([
-        fetch('/api/composite-run/' + encodeURIComponent(run_id) + '/status')
+        fetch(_api('/api/composite-run/' + encodeURIComponent(run_id) + '/status'))
           .then(function(r) {
             if (r.status === 404) return { _gone: true };
             return r.json();
           }),
-        fetch('/api/composite-run/' + encodeURIComponent(run_id))
+        fetch(_api('/api/composite-run/' + encodeURIComponent(run_id)))
           .then(function(r) { return r.ok ? r.json() : { trajectory: [] }; })
           .catch(function() { return { trajectory: [] }; }),
       ]).then(function(parts) {
@@ -15276,9 +15818,13 @@
           .then(function (j) { return j.entries || []; })
           .catch(function () { return []; });
         var chartFetches = (iset.studies || []).map(function (s) {
-          return fetch('/api/study-charts/' + encodeURIComponent(s.name))
-            .then(function (r) { return r.ok ? r.json() : {charts: []}; })
-            .then(function (j) { return {name: s.name, charts: j.charts || []}; })
+          // Via DataSource so snapshot mode reads api/study-charts/<slug>.json at
+          // the bundle basePath; raw fetch would 404 on a hosted read-only site.
+          return ((window.DataSource && window.DataSource.loadStudyCharts)
+            ? window.DataSource.loadStudyCharts(s.name)
+            : fetch('/api/study-charts/' + encodeURIComponent(s.name))
+                .then(function (r) { return r.ok ? r.json() : {charts: []}; }))
+            .then(function (j) { return {name: s.name, charts: (j && j.charts) || []}; })
             .catch(function () { return {name: s.name, charts: []}; });
         });
         var ghRepoFetch = fetch('/api/github-repo')
@@ -15294,7 +15840,33 @@
           .then(function (arr) {
             var chartsByStudy = {};
             arr[2].forEach(function (c) { chartsByStudy[c.name] = c.charts; });
-            return _buildInvestigationReportHtml(iset, arr[0], arr[1], chartsByStudy, undefined, null, arr[3], undefined, undefined, arr[4]);
+            // Fetch each study's embed_visualizations HTML and inline it so the
+            // generated report carries the interactive figures (Plotly hover/
+            // zoom/legend) offline, not just the static charts. The publisher
+            // basePath-prefixes embed.url, so a plain fetch resolves in a hosted
+            // snapshot too; in local mode it hits the same-origin /workspace path.
+            var specs = arr[0];
+            var embedFetches = specs.map(function (spec) {
+              var embeds = (spec && spec.embed_visualizations) || [];
+              var perStudy = embeds.map(function (embed) {
+                if (!embed || !embed.url) return Promise.resolve(null);
+                return fetch(embed.url, {headers: {Accept: 'text/html'}})
+                  .then(function (r) { return r.ok ? r.text() : null; })
+                  .then(function (text) {
+                    return text ? {name: embed.name || '', description: embed.description || '',
+                                   url: embed.url, html: text, stale: embed.stale === true} : null;
+                  })
+                  .catch(function () { return null; });
+              });
+              return Promise.all(perStudy).then(function (results) {
+                return {name: spec && spec.name, embeds: results.filter(Boolean)};
+              });
+            });
+            return Promise.all(embedFetches).then(function (embedResults) {
+              var embedsByStudy = {};
+              embedResults.forEach(function (e) { if (e && e.name) embedsByStudy[e.name] = e.embeds; });
+              return _buildInvestigationReportHtml(iset, specs, arr[1], chartsByStudy, embedsByStudy, null, arr[3], undefined, undefined, arr[4]);
+            });
           });
       });
   }
@@ -15480,19 +16052,26 @@
     var hint = document.getElementById('viv-gh-default-org-hint');
     if (!sel) return;
     sel.disabled = true;
+    var _retry = ' <a href="#" id="viv-gh-org-retry" style="color:#2563eb">Retry</a>';
+    function _bindRetry() {
+      var a = document.getElementById('viv-gh-org-retry');
+      if (a) a.onclick = function (e) { e.preventDefault(); _loadGithubOrgs(); };
+    }
     fetch('/api/auth/github/orgs').then(function (r) {
       if (r.status === 401) {
         sel.innerHTML = '<option value="">Sign in to load orgs…</option>';
-        if (hint) hint.textContent = '';
+        if (hint) hint.textContent = 'Sign in above to pick a default org.';
         return;
       }
       if (!r.ok) {
+        // Backend now degrades gracefully, so a hard non-OK here is unusual
+        // (network/proxy). Keep the picker usable + offer a retry.
         sel.innerHTML = '<option value="">Could not load orgs</option>';
-        if (hint) hint.textContent = 'GitHub returned HTTP ' + r.status + '.';
+        if (hint) { hint.innerHTML = 'GitHub request failed (HTTP ' + r.status + ').' + _retry; _bindRetry(); }
         return;
       }
       return r.json().then(function (data) {
-        // API shape: {login, orgs: [{name, kind: "personal"|"org"}, ...]}
+        // API shape: {login, orgs: [{name, kind}], warning?: "orgs_lookup_failed"}
         var orgs = (data && data.orgs) || [];
         var saved = '';
         try { saved = localStorage.getItem(GH_DEFAULT_ORG_KEY) || ''; } catch (_e) {}
@@ -15503,13 +16082,21 @@
           return '<option value="' + _esc(name) + '"' + selAttr + '>' + _esc(label) + '</option>';
         }).join('') || '<option value="">No orgs found</option>';
         if (hint) {
-          hint.textContent = saved
-            ? 'Default: ' + saved + ' (saved in this browser).'
-            : 'Pick one to use as the default for new-repo flows.';
+          if (data && data.warning) {
+            // Org list couldn't be fetched, but the personal namespace is
+            // available — the user isn't blocked.
+            hint.innerHTML = 'Showing your personal namespace — couldn’t list orgs right now.' + _retry;
+            _bindRetry();
+          } else {
+            hint.textContent = saved
+              ? 'Default: ' + saved + ' (saved in this browser).'
+              : 'Pick one to use as the default for new-repo flows.';
+          }
         }
       });
     }).catch(function () {
       sel.innerHTML = '<option value="">Network error</option>';
+      if (hint) { hint.innerHTML = 'Network error reaching the workbench.' + _retry; _bindRetry(); }
     }).then(function () {
       sel.disabled = false;
     });

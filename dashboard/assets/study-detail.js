@@ -46,7 +46,8 @@
       p.classList.toggle('active', p.dataset.kind === kind);
     });
     if (kind === 'tests') { loadTestsTab(window._study); }
-    if (kind === 'visualize') { _loadReadouts(); _loadCharts('viz-charts-panel'); }
+    if (kind === 'visualize') { _loadReadouts(); _loadCharts('viz-charts-panel'); _loadNativeGallery(); }
+    if (kind === 'report-cards') { _fillReportCardsTab(window._study); }
     if (kind === 'data') { _loadAnalysisOutputs(); }
     if (kind === 'simulate') { _renderReproduceCard(); }
   }
@@ -227,6 +228,44 @@
     return '<div class="chart-card">' + title + media +
            '<div class="chart-caption">' + (c.caption || '') + '</div></div>';
   }
+  // Baseline native-analysis gallery — the study's latest completed run's
+  // viz.json panels (mass fractions, cell mass, replication, …). Each panel is
+  // a self-contained Altair/Plotly doc, so it renders in its own srcdoc iframe
+  // (innerHTML would not execute the embedded vega/plotly <script> tags).
+  var _nativeGalleryLoaded = false;
+  function _loadNativeGallery() {
+    var host = document.getElementById('native-gallery-panel');
+    if (!host || _nativeGalleryLoaded) return;
+    _nativeGalleryLoaded = true;
+    var slug = studyName();
+    fetch('/api/study-native-gallery/' + encodeURIComponent(slug))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var panels = (d && d.panels) || {};
+        var names = Object.keys(panels);
+        if (!names.length) {
+          host.innerHTML = '<p class="muted" style="padding:8px">No baseline '
+            + 'figures yet — run this study to generate its analysis gallery '
+            + '(the run renders them into <code>viz.json</code>).</p>';
+          _nativeGalleryLoaded = false;  // allow a retry after a run completes
+          return;
+        }
+        function attr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }
+        host.innerHTML = names.map(function (n) {
+          return '<div class="native-fig" style="margin-bottom:18px">'
+            + '<div style="font-weight:600;font-size:0.92em;margin:0 0 5px 2px;color:#334155">'
+            + escapeHtmlForTests(n) + '</div>'
+            + '<iframe srcdoc="' + attr(panels[n]) + '" loading="lazy" '
+            + 'style="width:100%;height:480px;border:1px solid #e2e8f0;border-radius:8px;background:#fff"></iframe>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(function () {
+        host.innerHTML = '<p class="muted" style="padding:8px">Failed to load baseline figures.</p>';
+        _nativeGalleryLoaded = false;
+      });
+  }
+
   function _loadCharts(panelId) {
     if (_chartsLoadedFor[panelId]) return;
     var panel = document.getElementById(panelId);
@@ -370,7 +409,9 @@
     var isSnap = cfg.mode === 'snapshot';
     var origin = (typeof location !== 'undefined' && location.origin
                   && /^https?:/.test(location.origin)) ? location.origin : '';
-    var base = origin + (isSnap ? (cfg.basePath || '') : '');
+    // basePath applies in BOTH modes now: snapshot (published subpath) and live
+    // hosting under a prefix (e.g. /workbench). Empty in normal local serving.
+    var base = origin + (cfg.basePath || '');
     var u;
     if (isSnap) {
       // Published bundle: no live backend → read-only wiring from a static snapshot.
@@ -803,42 +844,6 @@
     if (panel && panel.scrollIntoView) { try { panel.scrollIntoView({block: 'start'}); } catch (e) {} }
   });
 
-  // ptools-launch → _get_ptools_launch
-  bindAll('.btn-launch-ptools', function(btn) {
-    // No /api/ptools-launch backend (and no local sms-ptools container) in the
-    // read-only snapshot — explain rather than fetch a 404 HTML page and throw
-    // "SyntaxError: The string did not match the expected pattern".
-    if ((window.__DASH_CONFIG__ || {}).mode === 'snapshot') {
-      alert('The PTools Omics Viewer launches against a local sms-ptools ' +
-            'container and is only available when running the dashboard locally.');
-      return;
-    }
-    var runId = btn.dataset.runId;
-    var study = studyName();
-    var url = '/api/ptools-launch/' + encodeURIComponent(study) + '?run=' + encodeURIComponent(runId);
-    fetch(url).then(function(r) {
-      // Parse defensively: a non-JSON body (e.g. a 404 HTML page) otherwise
-      // throws a cryptic JSON-parse SyntaxError instead of a useful message.
-      return r.text().then(function(t) {
-        var d = {};
-        try { d = t ? JSON.parse(t) : {}; }
-        catch (e) { d = { error: 'server returned ' + r.status + ' (no PTools backend)' }; }
-        return {status: r.status, body: d};
-      });
-    }).then(function(res) {
-      var b = res.body;
-      if (res.status === 200 && b.url) {
-        window.open(b.url, '_blank');
-      } else if (b && b.error === 'ptools_server_url not configured') {
-        alert('PTools not configured.\nSet ui.ptools_server_url in workspace.yaml.');
-      } else if (b && b.available && b.available.length === 0) {
-        alert('No ptools TSV results found for this run.\nRun the ptools analyses first.');
-      } else {
-        alert('PTools launch failed: ' + (b && b.error || res.status));
-      }
-    }).catch(function(err) { alert('PTools launch failed: ' + err); });
-  });
-
   // study-run-delete → _post_investigation_run_delete
   bindAll('.btn-delete-run', function(btn) {
     var runId = btn.dataset.runId;
@@ -886,6 +891,143 @@
       if (pill) { pill.style.background = p[0]; pill.style.color = p[1]; pill.textContent = p[2]; }
       mount.dataset.filled = '1';
     });
+  }
+
+  // Render EVERY generated report card for this study as its own labelled,
+  // verdict-pilled iframe — independent of whether the study declared a
+  // `kind: report_card` test entry (the Tests-tab path only shows test-linked
+  // cards, so cards on studies without those entries were otherwise invisible).
+  function _fillReportCardsTab(spec) {
+    var host = document.getElementById('report-cards-panel');
+    if (!host) return;
+    var urls = (spec && spec.report_card_urls) || {};
+    var cards = Object.keys(urls).sort();
+    if (!cards.length) {
+      host.innerHTML = '<p class="muted" style="padding:8px">No report cards '
+        + 'generated for this study yet. They are produced during the post-sim '
+        + 'flush from the study\'s <code>report_cards:</code> declaration into '
+        + '<code>viz/report_card/</code>.</p>';
+      return;
+    }
+    // Study-level interactive comparison (plotly, v2ecoli vs vEcoli) shown once
+    // above the per-card scorecards when the study has one.
+    var plotly = '';
+    var pUrl = spec && spec.comparison_plotly_url;
+    if (pUrl) {
+      plotly = '<details open style="margin:0 0 22px 0">'
+        + '<summary style="cursor:pointer;font-weight:700;color:#111827;font-size:1.02em">'
+        + 'Interactive comparison — v2ecoli vs vEcoli (plotly)</summary>'
+        + '<iframe class="viz-embed" src="' + escapeHtmlForTests(pUrl) + '" loading="lazy" '
+        + 'style="width:100%;height:900px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;margin-top:8px"></iframe>'
+        + '</details>';
+    }
+    host.innerHTML = plotly + cards.map(_renderRichReportCard).join('');
+  }
+
+  // Verdict vocab: colour + glyph (matches the grade_card / render_html palette).
+  var _RC_GL = {
+    within_tol: ['#16a34a', '✓', 'within tol'],
+    drift:      ['#d97706', '≈', 'drift'],
+    mismatch:   ['#dc2626', '✗', 'mismatch'],
+    ungraded:   ['#64748b', '−', 'ungraded']
+  };
+
+  function _rcPill(verdict) {
+    var p = _RC_GL[verdict || 'ungraded'] || _RC_GL.ungraded;
+    return '<span style="font-size:0.72em;font-family:monospace;padding:2px 10px;'
+      + 'border-radius:9999px;background:' + p[0] + ';color:#fff">' + p[1] + ' ' + p[2] + '</span>';
+  }
+
+  function _rcCounts(groups) {
+    var c = { within_tol: 0, drift: 0, mismatch: 0, ungraded: 0 };
+    Object.keys(groups || {}).forEach(function (gn) {
+      ((groups[gn] || {}).axes || []).forEach(function (a) {
+        var v = a.verdict || 'ungraded';
+        if (c[v] == null) c.ungraded++; else c[v]++;
+      });
+    });
+    return c;
+  }
+
+  // Inline "1✓ 0≈ 3✗ 0−" tally used inside the dark header pill and group chips.
+  function _rcTally(c) {
+    return ['within_tol', 'drift', 'mismatch', 'ungraded'].map(function (v) {
+      return '<span style="margin-left:8px;opacity:0.95">' + c[v] + _RC_GL[v][1] + '</span>';
+    }).join('');
+  }
+
+  function _rcGroupChip(v, n) {
+    var p = _RC_GL[v];
+    return '<span style="display:inline-block;padding:2px 9px;border-radius:9999px;background:'
+      + p[0] + ';color:#fff;font-size:0.72em;margin-left:5px">' + p[1] + ' ' + n + ' ' + p[2] + '</span>';
+  }
+
+  // The graded-scorecard look (dark header + overall pill w/ tally + per-group
+  // count chips + per-axis tables) rendered from the study's verdict.json, PLUS
+  // the rendered comparison trajectories (and an interactive plotly overlay when
+  // one is available) in a drill-down.
+  function _renderRichReportCard(card) {
+    var e = escapeHtmlForTests;
+    var rc = (window._study && window._study.report_card_urls || {})[card] || {};
+    var groups = rc.groups || {};
+    var counts = _rcCounts(groups);
+    var overall = rc.verdict || 'ungraded';
+    var op = _RC_GL[overall] || _RC_GL.ungraded;
+
+    var header =
+      '<div style="background:linear-gradient(135deg,#1f2937,#0b1220);color:#fff;'
+      + 'padding:14px 18px;border-radius:10px 10px 0 0">'
+      + '<div style="font-weight:700;font-size:1.02em;letter-spacing:0.01em">'
+      + e(card) + ' — report card</div>'
+      + '<div style="margin-top:9px"><span style="display:inline-block;padding:3px 12px;'
+      + 'border-radius:9999px;background:' + op[0] + ';color:#fff;font-weight:700;'
+      + 'font-size:0.82em;letter-spacing:0.04em">'
+      + String(overall).toUpperCase().replace(/_/g, ' ') + _rcTally(counts) + '</span></div></div>';
+
+    var sections = Object.keys(groups).map(function (gname) {
+      var g = groups[gname] || {};
+      var axes = g.axes || [];
+      var gc = { within_tol: 0, drift: 0, mismatch: 0, ungraded: 0 };
+      axes.forEach(function (a) { var v = a.verdict || 'ungraded'; if (gc[v] == null) gc.ungraded++; else gc[v]++; });
+      var rows = axes.map(function (a) {
+        var meter = a.meter || (a.value != null ? String(a.value) : '');
+        var val = (a.value != null && typeof a.value === 'number') ? a.value.toPrecision(4) : '';
+        return '<tr class="rc-row-' + (a.verdict || 'ungraded') + '">'
+          + '<td style="padding:7px 10px;border-bottom:1px solid #eef2f7;border-left:3px solid ' + (_RC_GL[a.verdict] || _RC_GL.ungraded)[0] + '">'
+          + '<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600;color:#1f2937">'
+          + e(String(a.label || a.id || '')) + '</span>' + _rcPill(a.verdict) + '</div></td>'
+          + '<td style="padding:7px 10px;border-bottom:1px solid #eef2f7;font-variant-numeric:tabular-nums;color:#334155">' + e(val) + '</td>'
+          + '<td style="padding:7px 10px;border-bottom:1px solid #eef2f7;color:#475569;font-size:0.9em">' + e(String(meter)) + '</td>'
+          + '</tr>';
+      }).join('');
+      return '<section style="background:#fff;border:1px solid #e5e7eb;border-top:0;padding:12px 14px">'
+        + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">'
+        + '<h4 style="margin:0;font-size:0.98em;color:#111827">' + e(gname.replace(/_/g, ' ')) + '</h4>'
+        + _rcGroupChip('within_tol', gc.within_tol) + _rcGroupChip('drift', gc.drift)
+        + _rcGroupChip('mismatch', gc.mismatch) + _rcGroupChip('ungraded', gc.ungraded) + '</div>'
+        + (axes.length
+          ? '<table style="width:100%;border-collapse:collapse;font-size:0.9em">'
+            + '<thead><tr style="text-align:left;color:#94a3b8;font-size:0.78em">'
+            + '<th style="padding:4px 10px">Axis</th><th style="padding:4px 10px">Value</th>'
+            + '<th style="padding:4px 10px">Summary</th></tr></thead><tbody>' + rows + '</tbody></table>'
+          : '<div class="muted" style="padding:4px 10px">no axes recorded</div>')
+        + '</section>';
+    }).join('');
+
+    // The actual comparison TRAJECTORIES are the study-level interactive plotly
+    // (v2ecoli vs vEcoli time-series overlays) rendered once at the top of the
+    // Report Cards tab — NOT rc.url. rc.url is the rendered report-card HTML,
+    // i.e. the same scorecard already shown above as native tables; embedding it
+    // under a "Comparison trajectories" label showed a second report card, which
+    // is exactly the confusion we're removing. So no per-card iframe here.
+    var viz = '';
+    if (!Object.keys(groups).length) {
+      viz = '<div class="muted" style="padding:8px">Verdict recorded, but the card body '
+        + 'has not been rendered yet — run the comparison to generate it.</div>';
+    }
+
+    return '<div class="report-card-block" style="margin-bottom:28px;border-radius:10px;'
+      + 'box-shadow:0 1px 3px rgba(0,0,0,0.06)">' + header + sections + '</div>' + viz;
   }
 
   function loadTestsTab(spec) {
@@ -1391,8 +1533,16 @@
     _renderReadinessPanel();
     _renderSpineSummary();
     _populateConclusionVerdictBadges();
-    // Open Understand/Overview and show only Understand's sub-nav on load.
-    _setStudyTab('overview');
+    // Open Understand/Overview and show only Understand's sub-nav on load —
+    // unless a ?tab=<kind> deep-link asks for a specific tab. Needs-attention
+    // items link here with ?tab=conclusions so a click lands on the verdict
+    // that triggered the alert.
+    var _tab = 'overview';
+    try {
+      var _q = new URLSearchParams(window.location.search).get('tab');
+      if (_q && document.querySelector('.study-tab[data-kind="' + _q + '"]')) _tab = _q;
+    } catch (_e) { /* no URLSearchParams — keep overview */ }
+    _setStudyTab(_tab);
   }
 
   // ── C2 — conclusion verdicts: read precomputed block from window._study.derived ─
@@ -1737,10 +1887,118 @@
 
   function _rrProg() { return document.getElementById('remote-run-progress'); }
   function _rrBtn() { return document.getElementById('remote-run-btn'); }
-  function _rrResetBtn() { var b = _rrBtn(); if (b) { b.disabled = false; b.textContent = '▶ Run on remote'; } }
-  function _rrErr(msg) { var p = _rrProg(); if (p) { p.hidden = false; p.innerHTML = '<div class="inv-run-err">' + msg + '</div>'; } _rrResetBtn(); }
+  function _rrResetBtn() { var b = _rrBtn(); if (b) { b.disabled = false; b.textContent = window._remoteRunPinned ? '▶ Run on remote (pinned)' : '▶ Run on remote'; } }
 
-  function _renderRemoteRunProgress(opts) {
+  // Pinned mode: relabel the run card + flip _submitRemoteRun to the no-push,
+  // no-login pinned path. Called on study-detail load (live backend only).
+  function _initRemoteRunPinned() {
+    var panel = document.getElementById('remote-run-panel');
+    if (!panel) return;
+    fetch('/api/remote-run-config').then(function(r) { return r.json(); }).then(function(cfg) {
+      if (!cfg) return;
+      // Truthful Origin: label the card with the config-derived deployment name
+      // (VIVARIUM_WORKBENCH_REMOTE_DEPLOYMENT) instead of a hardcoded "smsvpctest".
+      // Applies in BOTH pinned and stock modes.
+      if (cfg.deployment) {
+        var h3d = panel.querySelector('h3');
+        if (h3d && !cfg.pinned) h3d.textContent = 'Run on remote (' + escapeHtmlForTests(cfg.deployment) + ')';
+        window._remoteRunDeployment = cfg.deployment;
+      }
+      if (!cfg.pinned) return;
+      window._remoteRunPinned = true;
+      var shortSha = String(cfg.commit || '').slice(0, 12);
+      var label = (cfg.branch || 'main') + (shortSha ? ' @ ' + shortSha : '');
+      var h3 = panel.querySelector('h3');
+      var p = panel.querySelector('p.muted');
+      var btn = _rrBtn();
+      if (h3) h3.textContent = 'Run against pinned build (' + label + ')';
+      if (p) p.innerHTML = 'Runs on the Ray backend against the pinned, already-built simulator '
+        + '(<code>' + escapeHtmlForTests(label) + '</code>). Results land as a run on this study. '
+        + 'No push or GitHub login required.'
+        + (cfg.build_error ? '<br><span class="inv-run-err">⚠ ' + escapeHtmlForTests(cfg.build_error) + '</span>' : '');
+      if (btn) btn.textContent = '▶ Run on remote (pinned)';
+    }).catch(function() { /* leave the stock build-first card as-is */ });
+  }
+  window._initRemoteRunPinned = _initRemoteRunPinned;
+  function _rrErr(msg) { _stopRrTween(); var p = _rrProg(); if (p) { p.hidden = false; p.innerHTML = '<div class="inv-run-err">' + msg + '</div>'; } _rrResetBtn(); }
+
+  // ---- Progress-track adapter (Plan 7 / WS-2) ----------------------------
+  // _renderRemoteRunProgress keeps its existing {build, run, note, landBtn,
+  // landed, runDetail, phase} opts contract (so its ~11 call sites are
+  // unchanged) but now drives the reusable ProgressTrack milestone bar instead
+  // of the two-row text stepper. The one new opt threaded by the pollers is
+  // `phase` (the raw sms-api phase) so we can tell Queued from Running — the
+  // dashboard collapses both to run:'running' otherwise.
+  var _RR_STAGE_KEYS = ['resolve', 'submit', 'queued', 'running', 'done', 'landed'];
+  // Typical wall-clock per long stage (SAVE_SLOT "Pinned-build live facts":
+  // Ray-provision+ParCa ≈ 8 min queued, compute ≈ 5 min running). Drives the
+  // honest time-based soft-fill only; the bar snaps to the milestone on the
+  // real transition.
+  var _RR_TYPICAL_MS = { resolve: 120000, submit: 15000, queued: 480000, running: 300000 };
+
+  function _rrSoftFor(key) {
+    var t = _RR_TYPICAL_MS[key];
+    if (!t) return null;
+    _remoteRunState._stageStarts = _remoteRunState._stageStarts || {};
+    if (!_remoteRunState._stageStarts[key]) _remoteRunState._stageStarts[key] = Date.now();
+    return { startedAt: _remoteRunState._stageStarts[key], typicalMs: t };
+  }
+
+  // Translate the build/run/phase opts into a ProgressTrack `stages` model.
+  function _rrDeriveStages(opts) {
+    var pinned = !!window._remoteRunPinned;
+    var stages = [
+      { key: 'resolve', label: pinned ? 'Resolve' : 'Build' },
+      { key: 'submit', label: 'Submit' },
+      { key: 'queued', label: 'Queued' },
+      { key: 'running', label: 'Running' },
+      { key: 'done', label: 'Done' },
+      { key: 'landed', label: 'Landed' },
+    ];
+    var m = { mode: 'stages', stages: stages, done: [], active: null, failed: null, soft: null };
+    if (opts.landed) { m.done = _RR_STAGE_KEYS.slice(); return m; }        // fully landed
+    if (opts.build === 'failed') { m.failed = 'resolve'; return m; }
+    if (opts.build !== 'done') { m.active = 'resolve'; m.soft = _rrSoftFor('resolve'); return m; }
+    m.done.push('resolve');
+    if (opts.run === 'failed') {
+      m.done.push('submit');
+      m.failed = (opts.phase === 'queued') ? 'queued' : 'running';
+      if (m.failed === 'running') m.done.push('queued');
+      return m;
+    }
+    if (opts.landBtn || opts.run === 'done') {                            // run complete; landing is the outstanding manual step
+      m.done.push('submit', 'queued', 'running', 'done');
+      return m;
+    }
+    if (opts.run === 'running') {
+      m.done.push('submit');
+      if (opts.phase === 'queued') { m.active = 'queued'; m.soft = _rrSoftFor('queued'); }
+      else { m.done.push('queued'); m.active = 'running'; m.soft = _rrSoftFor('running'); }
+      return m;
+    }
+    m.active = 'submit'; m.soft = _rrSoftFor('submit');                    // build done, run pending → submitting
+    return m;
+  }
+
+  // Soft-fill tween: repaints only the active segment ~4×/s while a soft stage
+  // is running (ProgressTrack.tick is a no-op DOM-diff otherwise). Cancels on
+  // terminal/failed/reset or if the mount leaves the DOM.
+  var _rrTween = null;
+  function _stopRrTween() { if (_rrTween) { clearInterval(_rrTween); _rrTween = null; } }
+  function _startRrTween() {
+    if (_rrTween) return;
+    _rrTween = setInterval(function () {
+      var mount = _remoteRunState._ptMount, m = _remoteRunState._ptModel;
+      if (!mount || !document.body.contains(mount) || !m || !window.ProgressTrack || !(m.active && m.soft)) {
+        _stopRrTween(); return;
+      }
+      window.ProgressTrack.tick(mount, m);
+    }, 250);
+  }
+
+  // Legacy two-row stepper — retained as a graceful fallback if ProgressTrack
+  // failed to load (e.g. a stale cached page missing the new <script>).
+  function _renderRemoteRunProgressLegacy(opts) {
     var p = _rrProg(); if (!p) return;
     p.hidden = false;
     var icon = {pending: '⋯', running: '▶', queued: '⋯', built: '✓', done: '✓', failed: '✗', unreachable: '⚠'};
@@ -1759,6 +2017,33 @@
       + land + landed;
   }
 
+  function _renderRemoteRunProgress(opts) {
+    var p = _rrProg(); if (!p) return;
+    p.hidden = false;
+    if (!window.ProgressTrack) { _renderRemoteRunProgressLegacy(opts); return; }
+    // Shell: [.rr-track][.rr-extras] — ProgressTrack owns only the track
+    // subtree, so the land button / landed banner survive its rebuild-on-change.
+    var track = p.querySelector('.rr-track');
+    var extras = p.querySelector('.rr-extras');
+    if (!track || !extras) {
+      p.innerHTML = '<div class="rr-track"></div><div class="rr-extras"></div>';
+      track = p.querySelector('.rr-track');
+      extras = p.querySelector('.rr-extras');
+    }
+    var model = _rrDeriveStages(opts);
+    model.note = opts.note || '';
+    model.detail = opts.runDetail || opts.buildDetail || '';
+    _remoteRunState._ptModel = model;
+    _remoteRunState._ptMount = track;
+    window.ProgressTrack.render(track, model);
+    var land = opts.landBtn
+      ? '<button type="button" class="btn-mini" id="remote-run-land-btn" onclick="_landRemoteRun()">⬇ Land results locally</button>' : '';
+    var landed = opts.landed
+      ? '<div class="inv-run-progress-banner"><strong>✓ Landed</strong> <code>' + escapeHtmlForTests(opts.landed) + '</code> — refresh to see it.</div>' : '';
+    extras.innerHTML = land + landed;
+    if (model.active && model.soft) _startRrTween(); else _stopRrTween();
+  }
+
   function _submitRemoteRun(ev) {
     ev.preventDefault();
     var form = ev.target;
@@ -1771,6 +2056,28 @@
         run_parca: !!form.run_parca.checked,
       },
     };
+    if (window._remoteRunPinned) {
+      // Pinned mode: no push/build/login — resolve the already-built simulator
+      // and go straight to submit (phase "built" comes back immediately).
+      if (btn) { btn.disabled = true; btn.textContent = 'Resolving pinned build…'; }
+      fetch('/api/remote-run-pinned-build', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({study: _remoteRunState.study}),
+      }).then(function(r) { return r.json().then(function(j) { return {status: r.status, body: j}; }); })
+        .then(function(res) {
+          if (res.status !== 202 || !res.body.simulator_id) {
+            _rrErr('Could not resolve pinned build: ' + escapeHtmlForTests((res.body && res.body.error) || res.status)); return;
+          }
+          _remoteRunState.simulator_id = res.body.simulator_id;
+          _remoteRunState.commit = res.body.commit;
+          _renderRemoteRunProgress({build: 'done', run: 'running',
+            note: '<strong>Using pinned build.</strong> <span class="muted">'
+              + escapeHtmlForTests((res.body.branch || '') + ' @ ' + String(res.body.commit || '').slice(0, 12))
+              + '</span> Submitting run…'});
+          _submitRun();
+        }).catch(function(err) { _rrErr('Network error: ' + escapeHtmlForTests(String(err))); });
+      return false;
+    }
     if (btn) { btn.disabled = true; btn.textContent = 'Starting build…'; }
     fetch('/api/remote-run-build', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -1799,7 +2106,7 @@
         .then(function(r) { return r.json().then(function(j) { return {status: r.status, body: j}; }); })
         .then(function(res) {
           if (res.status === 502 || (res.body && res.body.reachable === false)) {
-            _renderRemoteRunProgress({build: _remoteRunState._buildPhase || 'running', run: _remoteRunState._runPhase || 'pending',
+            _renderRemoteRunProgress({build: _remoteRunState._buildPhase || 'running', run: _remoteRunState._runPhase || 'pending', phase: _remoteRunState._runPhase,
               note: '<strong class="inv-run-err">⚠ ' + escapeHtmlForTests((res.body && res.body.reason) || 'sms-api unreachable') + '</strong> <span class="muted">retrying…</span>'});
             _remoteRunTimer = setTimeout(tick, 4000); return;
           }
@@ -1868,7 +2175,7 @@
         _rrResetBtn(); return;
       }
       var label = body.phase === 'queued' ? 'Queued on AWS Batch…' : 'Running…';
-      _renderRemoteRunProgress({build: 'done', run: 'running', runDetail: body.raw_status,
+      _renderRemoteRunProgress({build: 'done', run: 'running', runDetail: body.raw_status, phase: body.phase,
         note: '<strong>' + label + '</strong> <span class="muted">(' + simRef + ')</span>'});
       again();
     });
