@@ -75,7 +75,7 @@ def build_loop(supply_rate=2.0, *, seed_membrane=40.0, seed_precursor=10.0,
     showing the metric discriminates self-production from external maintenance.
 
     ``injected_node`` accepts an arbitrary intervention-node dict (e.g. one emitted
-    by ``pbg_superpowers.ablation.generate_ablations`` / ``intervention_node``) and
+    by ``viva_superpowers.ablation.generate_ablations`` / ``intervention_node``) and
     wires it into the loop — this is the rebuild hook the ablation suite's
     ``build_fn`` uses to inject a knockout/scale/decouple node into the network.
     """
@@ -85,14 +85,14 @@ def build_loop(supply_rate=2.0, *, seed_membrane=40.0, seed_precursor=10.0,
     if external_membrane:
         # Negative control: an externally-maintained boundary (clamped, not
         # self-produced) — the membrane is held at its seed value from outside.
-        from pbg_superpowers.intervention import register_intervention, intervention_node
+        from viva_superpowers.intervention import register_intervention, intervention_node
         register_intervention(core)
         state["external_membrane"] = intervention_node(
             ["membrane_lipids"], mode="set", value=float(seed_membrane))
     if injected_node is not None:
         # Ablation hook: inject an externally-supplied intervention node (knockout /
         # scale / decouple / invert) targeting one of the loop's provided stores.
-        from pbg_superpowers.intervention import register_intervention
+        from viva_superpowers.intervention import register_intervention
         register_intervention(core)
         state["ablation_node"] = injected_node
     return Composite({"state": state}, core=core)
