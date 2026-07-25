@@ -24,17 +24,17 @@ from ruamel.yaml import YAML
 # uses; if a future venv lacks them, the guarded import degrades the spine to its
 # prior (unstamped) behaviour rather than crashing.
 try:
-    from pbg_superpowers import generation as _generation
-    from pbg_superpowers import viz_freshness as _viz_freshness
+    from viva_superpowers import generation as _generation
+    from viva_superpowers import viz_freshness as _viz_freshness
 except Exception:  # pragma: no cover - provenance is best-effort
     _generation = None
     _viz_freshness = None
 
 # Thread-1 ablation engine (compositional causal discovery). New in Wave 2; the
-# installed pbg_superpowers may be STALE (pre-ablation), so import defensively —
+# installed viva_superpowers may be STALE (pre-ablation), so import defensively —
 # the ablation suite is skipped (degrades to no ``ablations`` block) when absent.
 try:
-    from pbg_superpowers import ablation as _ablation
+    from viva_superpowers import ablation as _ablation
 except Exception:  # pragma: no cover - degrades when the engine isn't installed
     _ablation = None
 
@@ -60,7 +60,7 @@ _yaml.width = 100
 def start_spine_generation():
     """Open ONE coordinated result-generation for this spine run and return its id.
 
-    Reuses ``pbg_superpowers.generation.start_generation`` — every run record and
+    Reuses ``viva_superpowers.generation.start_generation`` — every run record and
     every rendered chart written by this spine run is stamped with the returned
     ``generation_id`` so the dashboard/report can flag any panel left over from an
     older generation. ``start_generation`` records the workspace's git sha via
@@ -85,7 +85,7 @@ def start_spine_generation():
 def _stamp_charts(charts_dir, *, generation_id, source_run_id, rendered_at):
     """Write a viz_freshness sidecar next to every PNG in ``charts_dir``.
 
-    Reuses ``pbg_superpowers.viz_freshness.stamp_meta`` (exact signature) so each
+    Reuses ``viva_superpowers.viz_freshness.stamp_meta`` (exact signature) so each
     chart records which run + generation produced it. ``rendered_at`` is a float
     epoch passed from the caller's context (no Date.now-style call inside). No-op
     when the provenance module isn't importable."""
@@ -205,7 +205,7 @@ def evaluate(study, measures):
 
 # Authored ``gate_status`` values → the computed-result vocabulary, so the
 # authored expectation and the computed verdict can be compared by equality.
-# Mirrors ``pbg_superpowers.study_verdict._GATE_STATUS_MAP``.
+# Mirrors ``viva_superpowers.study_verdict._GATE_STATUS_MAP``.
 _GATE_STATUS_MAP = {
     "passed": "passed",
     "failed": "failed",
@@ -224,9 +224,9 @@ def gate_evaluator(outcomes, authored_gate_status=None):
     when there is no recognised authored ``gate_status`` (no comparison possible)
     or when the two agree.
 
-    The canonical logic lives in ``pbg_superpowers.study_verdict`` (the compare at
+    The canonical logic lives in ``viva_superpowers.study_verdict`` (the compare at
     study_verdict.py:162-174). It is replicated here rather than imported because
-    the installed pbg_superpowers exposes only ``write_gate_evaluator``, which
+    the installed viva_superpowers exposes only ``write_gate_evaluator``, which
     re-reads and rewrites the whole study file via its own verdict path — the
     spine already owns that write and its own (simpler) verdict rule.
     """
@@ -323,7 +323,7 @@ def compute_invariant_checks(invariants_required):
 
     ``invariants_required`` is a list of ``{study, test}``. Returns a list of
     ``{study, test, prior, now, status}``. Each re-run is guarded: if a measure
-    function raises (e.g. a stale pbg_superpowers blocks the negative control),
+    function raises (e.g. a stale viva_superpowers blocks the negative control),
     the entry is recorded with ``status: unknown`` rather than aborting the spine.
     The coordinator's full integration pass runs these against a fresh venv.
     """
@@ -391,7 +391,7 @@ def _maybe_ablations_for_loop(study_path):
 
     Provides ``build_fn`` (rebuild the loop with an injected ablation node) and
     ``evaluate_fn`` (closure + fed trajectory → the study's measures), then calls
-    ``pbg_superpowers.ablation.run_ablation_suite``. Degrades to ``None`` whenever
+    ``viva_superpowers.ablation.run_ablation_suite``. Degrades to ``None`` whenever
     the engine isn't importable (stale venv) or any step raises."""
     if _ablation is None:
         return None

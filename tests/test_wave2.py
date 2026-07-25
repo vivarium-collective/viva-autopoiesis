@@ -1,6 +1,6 @@
 """Wave-2 hardening tests — semantic closure (C-SEM) + invariant regression (C-INVAR).
 
-Pure-function tests that do NOT require a fresh pbg_superpowers (no Intervention /
+Pure-function tests that do NOT require a fresh viva_superpowers (no Intervention /
 ablation engine needed): they exercise ``meter.semantic_closure``, the trajectory
 flux accumulation, and the ``spine.invariant_status`` band-comparison logic.
 
