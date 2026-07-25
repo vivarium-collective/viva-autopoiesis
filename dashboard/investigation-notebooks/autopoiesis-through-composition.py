@@ -66,8 +66,8 @@ if _env and Path(_env).is_dir():
     REPO = Path(_env)
 if REPO is None:
     REPO = _find_repo_root(Path.cwd().resolve())
-if REPO is None and Path('/home/runner/work/pbg-autopoiesis/pbg-autopoiesis').is_dir():
-    REPO = Path('/home/runner/work/pbg-autopoiesis/pbg-autopoiesis')
+if REPO is None and Path('/home/runner/work/viva-autopoiesis/viva-autopoiesis').is_dir():
+    REPO = Path('/home/runner/work/viva-autopoiesis/viva-autopoiesis')
 if REPO is None:
     REPO = Path.cwd()
 sys.path.insert(0, str(REPO))

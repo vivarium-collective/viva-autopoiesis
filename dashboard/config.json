@@ -1,7 +1,7 @@
 {
   "mode": "snapshot",
   "smsApiBase": "",
-  "repo": "https://github.com/vivarium-collective/pbg-autopoiesis",
-  "commit": "f8fdf95cd2e7e899ababc8688772946bf2301300",
+  "repo": "https://github.com/vivarium-collective/viva-autopoiesis",
+  "commit": "c59b19ea6e08b1981782714fd7df08df0cc36dae",
   "generated_from_ref": "main"
 }
