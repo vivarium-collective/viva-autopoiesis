@@ -10,7 +10,7 @@ dependencies = [
     "numpy",
     # The composites/processes build via core.build_core(), which imports the
     # reusable Intervention process; the dashboard publish + report jobs need it.
-    "pbg-superpowers @ git+https://github.com/vivarium-collective/pbg-superpowers.git@main",
+    "viva-superpowers @ git+https://github.com/vivarium-collective/viva-superpowers.git@main",
 ]
 
 [project.optional-dependencies]
