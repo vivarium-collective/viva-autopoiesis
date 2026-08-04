@@ -11,6 +11,9 @@ dependencies = [
     # The composites/processes build via core.build_core(), which imports the
     # reusable Intervention process; the dashboard publish + report jobs need it.
     "viva-superpowers @ git+https://github.com/vivarium-collective/viva-superpowers.git@main",
+    # loop.py's external_membrane / injected_node hooks use the framework's
+    # reusable Intervention process (register_intervention / intervention_node).
+    "pbg-basic-processes",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +24,9 @@ dev = [
     "vivarium-workbench @ git+https://github.com/vivarium-collective/vivarium-dashboard.git@main",
     "matplotlib",
 ]
+
+[tool.uv.sources]
+pbg-basic-processes = { git = "https://github.com/vivarium-collective/pbg-basic-processes.git", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]
