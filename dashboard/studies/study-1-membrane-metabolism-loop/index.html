@@ -22,6 +22,7 @@
     
   </h1>
   <span class="study-header-actions" style="display:inline-flex; gap:6px; flex-shrink:0;">
+    
     <button type="button" id="study-reproduce" class="btn-mini" title="Replay this study's most recent run's RECORDED manifest verbatim (POST /api/study-reproduce) — ignores any study.yaml edits made since">↻ Reproduce</button>
     <button type="button" id="study-run-current-spec" class="btn-mini" title="Run this study's CURRENT baseline spec (POST /api/study-run-baseline) as a brand-new run">▶ Run current spec</button>
   </span>
@@ -91,7 +92,7 @@
           <span class="status-detail-axis">2 · Execution</span>
           <span class="status-chip gate-state-passed">ran</span>
           
-          <span class="gate-computed-chip gate-state-passed" title="1 completed run(s)">◆ computed: ran</span>
+          <span class="gate-computed-chip gate-state-passed" title="2 completed run(s)">◆ computed: ran</span>
           
           
           
@@ -327,6 +328,11 @@
 /* SVGs/PNGs scale to fit their card; preserves aspect ratio so a 1400×484
    chart shrinks instead of overflowing horizontally + clipping. */
 .figure-card svg,.figure-card img.chart-img{display:block;width:100%;max-width:100%;height:auto}
+/* Inline SVGs with <foreignObject> HTML (loom figure exports) don't scale via
+   max-width in WebKit; study-detail.js _fitSvgScale shrinks them with a
+   transform inside this wrapper. overflow:hidden clips sub-pixel spill. */
+.figure-svg-scale{display:block;width:100%;overflow:hidden}
+.figure-svg-scale svg{display:block;max-width:none}
 .figure-desc{margin:8px 12px 0;font-size:0.85em;color:#475569}
 .figure-caption-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 12px;font-size:0.85em;color:#475569;border-top:1px solid #f1f5f9;background:#f8fafc}
 .figure-source-chip{font-size:0.68em;text-transform:uppercase;letter-spacing:0.05em;padding:1px 8px;border-radius:9999px;background:#e2e8f0;color:#64748b;flex-shrink:0}
@@ -650,7 +656,11 @@ fed it persists, starved it dissipates.
 
 
 <section class="study-tab-panel" data-kind="compose" id="panel-compose" hidden>
-  <h2 class="overview-label" style="margin-bottom:8px">Model composition</h2>
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
+    <h2 class="overview-label" style="margin:0">Model composition</h2>
+    
+    <button type="button" class="btn-mini" onclick="window._vivStudyNotebookFromCard(event, 'study-1-membrane-metabolism-loop', '')" title="Download a runnable Jupyter notebook for THIS study — its composite + editable parameters + figures">↓ notebook</button>
+  </div>
   
   
   
@@ -779,6 +789,13 @@ fed it persists, starved it dissipates.
 <section class="study-tab-panel" data-kind="visualize" id="panel-visualize" hidden>
 
   <div class="overview-section study-figures figure-gallery" id="visualize-section">
+
+    
+    
+    <div class="viz-actions-row" style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+      <button type="button" class="btn-mini" onclick="window._vivStudyFiguresFromCard(event, 'study-1-membrane-metabolism-loop')" title="Download this study's visualizations (figure panels + its composite) as a zip">↓ visualizations</button>
+    </div>
+    
 
     <div id="native-gallery-panel" class="figure-mount"><p class="empty-message">Loading figures…</p></div>
 
@@ -1114,7 +1131,7 @@ pass_if: {"op": "\u003e=", "value": 1.0}</pre>
         baseline · seed ? ·
         ?s simulated ·
         ? history rows ·
-        started 2026-06-14T01:27:52.189563+00:00
+        started 1781400472.189563
       </div>
       
       
@@ -1246,7 +1263,7 @@ pass_if: {"op": "\u003e=", "value": 1.0}</pre>
 </section>
 
 </main>
-<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-autopoiesis", basePath: "/viva-autopoiesis/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-autopoiesis/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-autopoiesis", "repo_url": "https://github.com/vivarium-collective/viva-autopoiesis", "commit": "c9000c58ada329c4452290f71698c3910798f911", "commit_url": "https://github.com/vivarium-collective/viva-autopoiesis/commit/c9000c58ada329c4452290f71698c3910798f911", "branch": "main", "lockfile": "uv.lock@7d2a62e43384", "generated_at": "2026-08-04 03:59 UTC"} };</script>
+<script>window.__DASH_CONFIG__ = { mode: "snapshot", interactiveUrl: "https://github.com/vivarium-collective/viva-autopoiesis", basePath: "/viva-autopoiesis/dashboard", inputsDownloadBase: "https://github.com/vivarium-collective/viva-autopoiesis/raw/main", provenance: {"repo_slug": "vivarium-collective/viva-autopoiesis", "repo_url": "https://github.com/vivarium-collective/viva-autopoiesis", "commit": "c9000c58ada329c4452290f71698c3910798f911", "commit_url": "https://github.com/vivarium-collective/viva-autopoiesis/commit/c9000c58ada329c4452290f71698c3910798f911", "branch": "main", "lockfile": "uv.lock@38db1679e671", "generated_at": "2026-08-14 18:19 UTC"} };</script>
 <script src="/viva-autopoiesis/dashboard/assets/data-source.js"></script>
 <script>
 window._studyName = "study-1-membrane-metabolism-loop";

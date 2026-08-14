@@ -129,7 +129,32 @@ def describe_spec(spec):
     print("\nfull editable spec dict:")
     print(_json.dumps(spec, indent=2, default=str))
 
-# ## Study: `study-1-membrane-metabolism-loop`
+import base64 as _b64, pathlib as _pl
+def _render_one(address, config, runs_db, study_yaml):
+    """Generic figure renderer (no workspace render_study_viz.py):
+    resolve an ``image:<relpath>`` visualization to displayable HTML,
+    relative to the study directory."""
+    addr = str(address or '')
+    for _scheme in ('image:', 'file:', 'gif:', 'png:', 'svg:', 'jpg:', 'jpeg:'):
+        if addr.startswith(_scheme):
+            addr = addr[len(_scheme):]; break
+    _p = _pl.Path(addr)
+    if not _p.is_absolute():
+        _p = _pl.Path(study_yaml).resolve().parent / _p
+    if not _p.is_file():
+        return f'<p style="color:#b91c1c">figure not found: {address}</p>'
+    _suffix = _p.suffix.lower()
+    if _suffix == '.svg':
+        return _p.read_text(encoding='utf-8', errors='replace')
+    if _suffix in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
+        _mime = 'jpeg' if _suffix in ('.jpg', '.jpeg') else _suffix[1:]
+        _data = _b64.b64encode(_p.read_bytes()).decode('ascii')
+        return f'<img src="data:image/{_mime};base64,{_data}" style="max-width:100%"/>'
+    if _suffix in ('.html', '.htm'):
+        return _p.read_text(encoding='utf-8', errors='replace')
+    return f'<p style="color:#6b7280">unsupported figure type: {address}</p>'
+
+# ## Study: Study 1 — the minimal membrane/metabolism loop (`study-1-membrane-metabolism-loop`)
 #
 # **Objective.** Assemble the smallest precarious, self-bounding identity by composing a toy metabolism,
 # a membrane that grows from its own lipids (and decays without them), and a boundary whose
@@ -138,6 +163,40 @@ def describe_spec(spec):
 # fed it persists, starved it dissipates.
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `membrane-metabolism-loop` | `pbg_autopoiesis.composites.membrane-metabolism-loop` | 0 | supply_rate=2.0 |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `pbg_autopoiesis.composites.membrane-metabolism-loop`** — `spec_pbg_autopoiesis_composites_membrane_metabolism_loop` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop = load_spec(REPO / 'pbg_autopoiesis/composites/membrane-metabolism-loop.composite.yaml')
+describe_spec(spec_pbg_autopoiesis_composites_membrane_metabolism_loop)
+
+# === Edit parameters for composite 'membrane-metabolism-loop' ===
+# Each line is the spec's CURRENT value — change any, then run the Run cell
+# below. The spec is a plain dict, so you may also add or remove keys.
+
+# tunable parameters (filled into ${name} placeholders):
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['parameters']['supply_rate']['default'] = 2.0
+
+# process 'supply'  (local:Supply)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['interval'] = 1.0
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['config']['rate'] = '${supply_rate}'
+
+# process 'metabolism'  (local:Metabolism)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['metabolism']['interval'] = 1.0
+
+# process 'membrane'  (local:Membrane)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['membrane']['interval'] = 1.0
+
+# process 'boundary'  (local:Boundary)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['boundary']['interval'] = 1.0
 
 # ### Run
 #
@@ -203,7 +262,7 @@ _save_viz('study-1-membrane-metabolism-loop', 'phase_portrait', _render_one('', 
 # | precariousness | kind=derived_scalar field=precariousness_ratio | op < value 0.3 provenance {'kind': 'calibration', 'note': '0.3 starved/fed ratio is a calibration band set so the self-producing loop (≈0.035) passes with wide margin while an externally-maintained mimic (≈9x persistent) fails — calibrated against the two controls, not a literature value.'} |
 # | identity-persists-when-fed | kind=derived_scalar field=fed_volume_growth | op >= value 1.0 |
 
-# ## Study: `study-2-spatial-containment`
+# ## Study: Study 2 — spatial containment: holding the individual together (`study-2-spatial-containment`)
 #
 # **Objective.** Study 1 had no space — "inside" was a scalar volume. In a medium the self-produced
 # interior would diffuse away and the individual would dissolve. Put the cell on a 1-D
@@ -213,6 +272,33 @@ _save_viz('study-1-membrane-metabolism-loop', 'phase_portrait', _render_one('', 
 # containment, with precariousness extended to space.
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `spatial-containment` | `pbg_autopoiesis.composites.spatial-containment` | 0 | supply_rate=2.0 |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `pbg_autopoiesis.composites.spatial-containment`** — `spec_pbg_autopoiesis_composites_spatial_containment` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_pbg_autopoiesis_composites_spatial_containment = load_spec(REPO / 'pbg_autopoiesis/composites/spatial-containment.composite.yaml')
+describe_spec(spec_pbg_autopoiesis_composites_spatial_containment)
+
+# === Edit parameters for composite 'spatial-containment' ===
+# Each line is the spec's CURRENT value — change any, then run the Run cell
+# below. The spec is a plain dict, so you may also add or remove keys.
+
+# tunable parameters (filled into ${name} placeholders):
+spec_pbg_autopoiesis_composites_spatial_containment['parameters']['fed']['default'] = True
+spec_pbg_autopoiesis_composites_spatial_containment['parameters']['membrane_on']['default'] = True
+
+# process 'spatial'  (local:SpatialContainment)
+spec_pbg_autopoiesis_composites_spatial_containment['state']['spatial']['interval'] = 1.0
+spec_pbg_autopoiesis_composites_spatial_containment['state']['spatial']['config']['fed'] = '${fed}'
+spec_pbg_autopoiesis_composites_spatial_containment['state']['spatial']['config']['membrane_on'] = '${membrane_on}'
 
 # ### Run
 #
@@ -255,7 +341,7 @@ _save_viz('study-2-spatial-containment', 'containment_over_time', _render_one(''
 # | membrane-counters-diffusion | kind=derived_scalar field=membrane_effect | op >= value 2.0 provenance {'kind': 'theory', 'note': 'The membrane must more than double containment vs metabolism-alone for the self-produced boundary (not diffusion physics) to be the cause; 2x is the minimal "membrane dominates" criterion implied by the discriminative claim.'} |
 # | spatial-precariousness | kind=derived_scalar field=precariousness_collapse | op < value 0.3 |
 
-# ## Study: `study-3-adaptive-chemotaxis`
+# ## Study: Study 3 — adaptive chemotaxis: move toward food to survive (`study-3-adaptive-chemotaxis`)
 #
 # **Objective.** Place the precarious individual in an environment with a nutrient gradient and give
 # it a sensorimotor loop: sense the local nutrient, run-and-tumble (tumble less when
@@ -268,6 +354,33 @@ _save_viz('study-2-spatial-containment', 'containment_over_time', _render_one(''
 # agency in service of self-maintenance.
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `chemotactic-agent` | `pbg_autopoiesis.composites.adaptive-chemotaxis` | 0 | supply_rate=2.0 |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `pbg_autopoiesis.composites.adaptive-chemotaxis`** — `spec_pbg_autopoiesis_composites_adaptive_chemotaxis` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_pbg_autopoiesis_composites_adaptive_chemotaxis = load_spec(REPO / 'pbg_autopoiesis/composites/adaptive-chemotaxis.composite.yaml')
+describe_spec(spec_pbg_autopoiesis_composites_adaptive_chemotaxis)
+
+# === Edit parameters for composite 'adaptive-chemotaxis' ===
+# Each line is the spec's CURRENT value — change any, then run the Run cell
+# below. The spec is a plain dict, so you may also add or remove keys.
+
+# tunable parameters (filled into ${name} placeholders):
+spec_pbg_autopoiesis_composites_adaptive_chemotaxis['parameters']['chemotactic']['default'] = True
+spec_pbg_autopoiesis_composites_adaptive_chemotaxis['parameters']['seed']['default'] = 0
+
+# process 'chemotaxis'  (local:Chemotaxis)
+spec_pbg_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['interval'] = 1.0
+spec_pbg_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['config']['chemotactic'] = '${chemotactic}'
+spec_pbg_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['config']['seed'] = '${seed}'
 
 # ### Run
 #
@@ -310,7 +423,7 @@ _save_viz('study-3-adaptive-chemotaxis', 'landscape', _render_one('', {}, RUNS_D
 # | agency-advantage | kind=derived_scalar field=survival_advantage | op >= value 1.5 provenance {'kind': 'calibration', 'note': '1.5x advantage band set so sensing must clearly beat the blind random-walk control (~0.35 survival); calibrated against the negative control rather than a literature effect size (observed 2.33x ± 0.26 over 12 seeds).'} |
 # | sense-making | kind=derived_scalar field=gradient_advantage | op >= value 1.15 provenance {'kind': 'theory', 'note': '>1 means the agent experiences more food than chance; 1.15 is a minimal "the gradient is made to matter" margin above parity — a theory-motivated floor for sense-making, not a calibrated or literature value.'} |
 
-# ## Study: `study-4-growth-division`
+# ## Study: Study 4 — growth & division: one individual becomes a heterogeneous population (`study-4-growth-division`)
 #
 # **Objective.** The precarious individual grows as its autopoietic loop runs and, past a size
 # threshold, DIVIDES into two daughters. The membrane is partitioned with noise so
@@ -321,6 +434,33 @@ _save_viz('study-3-adaptive-chemotaxis', 'landscape', _render_one('', {}, RUNS_D
 # heterogeneous population is the substrate on which study 5's selection can act.
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `growing-population` | `pbg_autopoiesis.composites.growth-division` | 0 | supply_rate=2.0 |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `pbg_autopoiesis.composites.growth-division`** — `spec_pbg_autopoiesis_composites_growth_division` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_pbg_autopoiesis_composites_growth_division = load_spec(REPO / 'pbg_autopoiesis/composites/growth-division.composite.yaml')
+describe_spec(spec_pbg_autopoiesis_composites_growth_division)
+
+# === Edit parameters for composite 'growth-division' ===
+# Each line is the spec's CURRENT value — change any, then run the Run cell
+# below. The spec is a plain dict, so you may also add or remove keys.
+
+# tunable parameters (filled into ${name} placeholders):
+spec_pbg_autopoiesis_composites_growth_division['parameters']['supply']['default'] = 0.55
+spec_pbg_autopoiesis_composites_growth_division['parameters']['seed']['default'] = 0
+
+# process 'growth'  (local:GrowthDivision)
+spec_pbg_autopoiesis_composites_growth_division['state']['growth']['interval'] = 1.0
+spec_pbg_autopoiesis_composites_growth_division['state']['growth']['config']['supply'] = '${supply}'
+spec_pbg_autopoiesis_composites_growth_division['state']['growth']['config']['seed'] = '${seed}'
 
 # ### Run
 #
@@ -363,7 +503,7 @@ _save_viz('study-4-growth-division', 'heterogeneity', _render_one('', {}, RUNS_D
 # | heterogeneity | kind=derived_scalar field=composition_heterogeneity | op >= value 0.05 provenance {'kind': 'exploratory', 'note': 'Existence-level band (this is an exploratory study): the threshold asks only whether trait diversity emerges at all (spread > ~0), not a calibrated or literature-anchored magnitude.'} |
 # | division-precariousness | kind=derived_scalar field=division_mortality | op >= value 0.01 provenance {'kind': 'exploratory', 'note': 'Existence-level band: any non-zero daughter mortality demonstrates reproduction carries a viability cost. Exploratory threshold (does the cost occur at all?), not a calibrated rate.'} |
 
-# ## Study: `study-5-adversarial-probes`
+# ## Study: Adversarial probes — can the framework be fooled? (`study-5-adversarial-probes`)
 #
 # **Objective.** Turn the demonstration into a test: challenge the autopoiesis framework with
 # systems that should NOT qualify, and check that the metric REJECTS them. Two
@@ -373,6 +513,40 @@ _save_viz('study-4-growth-division', 'heterogeneity', _render_one('', {}, RUNS_D
 # criteria discriminate genuine self-production from superficial similarity.
 
 # ### Parameters
+#
+# | simulation | composite | steps | params |
+# | --- | --- | --- | --- |
+# | `adversarial-probes` | `pbg_autopoiesis.composites.membrane-metabolism-loop` | 0 | supply_rate=0.0 |
+
+# ### Specification (process-bigraph) — load, inspect, edit
+#
+# Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
+
+# **Composite `pbg_autopoiesis.composites.membrane-metabolism-loop`** — `spec_pbg_autopoiesis_composites_membrane_metabolism_loop` (a plain, editable dict)
+
+from viva_superpowers.composite_spec import load_spec
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop = load_spec(REPO / 'pbg_autopoiesis/composites/membrane-metabolism-loop.composite.yaml')
+describe_spec(spec_pbg_autopoiesis_composites_membrane_metabolism_loop)
+
+# === Edit parameters for composite 'membrane-metabolism-loop' ===
+# Each line is the spec's CURRENT value — change any, then run the Run cell
+# below. The spec is a plain dict, so you may also add or remove keys.
+
+# tunable parameters (filled into ${name} placeholders):
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['parameters']['supply_rate']['default'] = 2.0
+
+# process 'supply'  (local:Supply)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['interval'] = 1.0
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['config']['rate'] = '${supply_rate}'
+
+# process 'metabolism'  (local:Metabolism)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['metabolism']['interval'] = 1.0
+
+# process 'membrane'  (local:Membrane)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['membrane']['interval'] = 1.0
+
+# process 'boundary'  (local:Boundary)
+spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['boundary']['interval'] = 1.0
 
 # ### Run
 #
