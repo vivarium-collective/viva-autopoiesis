@@ -10,7 +10,13 @@ dependencies = [
     "numpy",
     # The composites/processes build via core.build_core(), which imports the
     # reusable Intervention process; the dashboard publish + report jobs need it.
-    "viva-superpowers @ git+https://github.com/vivarium-collective/viva-superpowers.git@main",
+    # Declared BARE + git URL via [tool.uv.sources] below — NOT an inline
+    # `pkg @ git+…` direct reference. A baked-in URL lands in this package's
+    # metadata and uv then refuses to unify it with the bare `viva-superpowers`
+    # requirement that vivarium-workbench (pulled by `dev`) declares → the
+    # "conflicting URLs for viva-superpowers" resolve failure. Same pattern the
+    # other dashboards (e.g. v2ecoli) use for their superpowers dep.
+    "viva-superpowers",
     # loop.py's external_membrane / injected_node hooks use the framework's
     # reusable Intervention process (register_intervention / intervention_node).
     "pbg-basic-processes",
@@ -26,6 +32,11 @@ dev = [
 ]
 
 [tool.uv.sources]
+# Pin the SAME rev vivarium-workbench pins (it bakes viva-superpowers@<rev> into
+# its published metadata), so uv unifies the two into one URL instead of failing
+# with "conflicting URLs for viva-superpowers". Bump in lockstep with the
+# workbench when it moves the rev.
+viva-superpowers = { git = "https://github.com/vivarium-collective/viva-superpowers.git", rev = "1dd4adc43fbcd5a7dfaf80b4e5dee070f0abeeca" }
 pbg-basic-processes = { git = "https://github.com/vivarium-collective/pbg-basic-processes.git", branch = "main" }
 
 [build-system]
