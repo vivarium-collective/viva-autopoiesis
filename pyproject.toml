@@ -36,7 +36,7 @@ dev = [
 # its published metadata), so uv unifies the two into one URL instead of failing
 # with "conflicting URLs for viva-superpowers". Bump in lockstep with the
 # workbench when it moves the rev.
-viva-superpowers = { git = "https://github.com/vivarium-collective/viva-superpowers.git", rev = "1dd4adc43fbcd5a7dfaf80b4e5dee070f0abeeca" }
+viva-superpowers = { git = "https://github.com/vivarium-collective/viva-superpowers.git", branch = "main" }
 pbg-basic-processes = { git = "https://github.com/vivarium-collective/pbg-basic-processes.git", branch = "main" }
 
 [build-system]
