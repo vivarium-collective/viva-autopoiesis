@@ -79,7 +79,7 @@ os.chdir(REPO)
 RERUN = True
 
 # --- standard process-bigraph protocol: register the workspace's Core ---
-from pbg_autopoiesis.core import build_core
+from viva_autopoiesis.core import build_core
 core = build_core()
 
 # --- imported from the repo this notebook was generated for ---
@@ -166,37 +166,37 @@ def _render_one(address, config, runs_db, study_yaml):
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `membrane-metabolism-loop` | `pbg_autopoiesis.composites.membrane-metabolism-loop` | 0 | supply_rate=2.0 |
+# | `membrane-metabolism-loop` | `viva_autopoiesis.composites.membrane-metabolism-loop` | 0 | supply_rate=2.0 |
 
 # ### Specification (process-bigraph) — load, inspect, edit
 #
 # Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
 
-# **Composite `pbg_autopoiesis.composites.membrane-metabolism-loop`** — `spec_pbg_autopoiesis_composites_membrane_metabolism_loop` (a plain, editable dict)
+# **Composite `viva_autopoiesis.composites.membrane-metabolism-loop`** — `spec_viva_autopoiesis_composites_membrane_metabolism_loop` (a plain, editable dict)
 
 from viva_superpowers.composite_spec import load_spec
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop = load_spec(REPO / 'pbg_autopoiesis/composites/membrane-metabolism-loop.composite.yaml')
-describe_spec(spec_pbg_autopoiesis_composites_membrane_metabolism_loop)
+spec_viva_autopoiesis_composites_membrane_metabolism_loop = load_spec(REPO / 'viva_autopoiesis/composites/membrane-metabolism-loop.composite.yaml')
+describe_spec(spec_viva_autopoiesis_composites_membrane_metabolism_loop)
 
 # === Edit parameters for composite 'membrane-metabolism-loop' ===
 # Each line is the spec's CURRENT value — change any, then run the Run cell
 # below. The spec is a plain dict, so you may also add or remove keys.
 
 # tunable parameters (filled into ${name} placeholders):
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['parameters']['supply_rate']['default'] = 2.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['parameters']['supply_rate']['default'] = 2.0
 
 # process 'supply'  (local:Supply)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['interval'] = 1.0
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['config']['rate'] = '${supply_rate}'
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['config']['rate'] = '${supply_rate}'
 
 # process 'metabolism'  (local:Metabolism)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['metabolism']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['metabolism']['interval'] = 1.0
 
 # process 'membrane'  (local:Membrane)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['membrane']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['membrane']['interval'] = 1.0
 
 # process 'boundary'  (local:Boundary)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['boundary']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['boundary']['interval'] = 1.0
 
 # ### Run
 #
@@ -275,30 +275,30 @@ _save_viz('study-1-membrane-metabolism-loop', 'phase_portrait', _render_one('', 
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `spatial-containment` | `pbg_autopoiesis.composites.spatial-containment` | 0 | supply_rate=2.0 |
+# | `spatial-containment` | `viva_autopoiesis.composites.spatial-containment` | 0 | supply_rate=2.0 |
 
 # ### Specification (process-bigraph) — load, inspect, edit
 #
 # Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
 
-# **Composite `pbg_autopoiesis.composites.spatial-containment`** — `spec_pbg_autopoiesis_composites_spatial_containment` (a plain, editable dict)
+# **Composite `viva_autopoiesis.composites.spatial-containment`** — `spec_viva_autopoiesis_composites_spatial_containment` (a plain, editable dict)
 
 from viva_superpowers.composite_spec import load_spec
-spec_pbg_autopoiesis_composites_spatial_containment = load_spec(REPO / 'pbg_autopoiesis/composites/spatial-containment.composite.yaml')
-describe_spec(spec_pbg_autopoiesis_composites_spatial_containment)
+spec_viva_autopoiesis_composites_spatial_containment = load_spec(REPO / 'viva_autopoiesis/composites/spatial-containment.composite.yaml')
+describe_spec(spec_viva_autopoiesis_composites_spatial_containment)
 
 # === Edit parameters for composite 'spatial-containment' ===
 # Each line is the spec's CURRENT value — change any, then run the Run cell
 # below. The spec is a plain dict, so you may also add or remove keys.
 
 # tunable parameters (filled into ${name} placeholders):
-spec_pbg_autopoiesis_composites_spatial_containment['parameters']['fed']['default'] = True
-spec_pbg_autopoiesis_composites_spatial_containment['parameters']['membrane_on']['default'] = True
+spec_viva_autopoiesis_composites_spatial_containment['parameters']['fed']['default'] = True
+spec_viva_autopoiesis_composites_spatial_containment['parameters']['membrane_on']['default'] = True
 
 # process 'spatial'  (local:SpatialContainment)
-spec_pbg_autopoiesis_composites_spatial_containment['state']['spatial']['interval'] = 1.0
-spec_pbg_autopoiesis_composites_spatial_containment['state']['spatial']['config']['fed'] = '${fed}'
-spec_pbg_autopoiesis_composites_spatial_containment['state']['spatial']['config']['membrane_on'] = '${membrane_on}'
+spec_viva_autopoiesis_composites_spatial_containment['state']['spatial']['interval'] = 1.0
+spec_viva_autopoiesis_composites_spatial_containment['state']['spatial']['config']['fed'] = '${fed}'
+spec_viva_autopoiesis_composites_spatial_containment['state']['spatial']['config']['membrane_on'] = '${membrane_on}'
 
 # ### Run
 #
@@ -357,30 +357,30 @@ _save_viz('study-2-spatial-containment', 'containment_over_time', _render_one(''
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `chemotactic-agent` | `pbg_autopoiesis.composites.adaptive-chemotaxis` | 0 | supply_rate=2.0 |
+# | `chemotactic-agent` | `viva_autopoiesis.composites.adaptive-chemotaxis` | 0 | supply_rate=2.0 |
 
 # ### Specification (process-bigraph) — load, inspect, edit
 #
 # Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
 
-# **Composite `pbg_autopoiesis.composites.adaptive-chemotaxis`** — `spec_pbg_autopoiesis_composites_adaptive_chemotaxis` (a plain, editable dict)
+# **Composite `viva_autopoiesis.composites.adaptive-chemotaxis`** — `spec_viva_autopoiesis_composites_adaptive_chemotaxis` (a plain, editable dict)
 
 from viva_superpowers.composite_spec import load_spec
-spec_pbg_autopoiesis_composites_adaptive_chemotaxis = load_spec(REPO / 'pbg_autopoiesis/composites/adaptive-chemotaxis.composite.yaml')
-describe_spec(spec_pbg_autopoiesis_composites_adaptive_chemotaxis)
+spec_viva_autopoiesis_composites_adaptive_chemotaxis = load_spec(REPO / 'viva_autopoiesis/composites/adaptive-chemotaxis.composite.yaml')
+describe_spec(spec_viva_autopoiesis_composites_adaptive_chemotaxis)
 
 # === Edit parameters for composite 'adaptive-chemotaxis' ===
 # Each line is the spec's CURRENT value — change any, then run the Run cell
 # below. The spec is a plain dict, so you may also add or remove keys.
 
 # tunable parameters (filled into ${name} placeholders):
-spec_pbg_autopoiesis_composites_adaptive_chemotaxis['parameters']['chemotactic']['default'] = True
-spec_pbg_autopoiesis_composites_adaptive_chemotaxis['parameters']['seed']['default'] = 0
+spec_viva_autopoiesis_composites_adaptive_chemotaxis['parameters']['chemotactic']['default'] = True
+spec_viva_autopoiesis_composites_adaptive_chemotaxis['parameters']['seed']['default'] = 0
 
 # process 'chemotaxis'  (local:Chemotaxis)
-spec_pbg_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['interval'] = 1.0
-spec_pbg_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['config']['chemotactic'] = '${chemotactic}'
-spec_pbg_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['config']['seed'] = '${seed}'
+spec_viva_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['interval'] = 1.0
+spec_viva_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['config']['chemotactic'] = '${chemotactic}'
+spec_viva_autopoiesis_composites_adaptive_chemotaxis['state']['chemotaxis']['config']['seed'] = '${seed}'
 
 # ### Run
 #
@@ -437,30 +437,30 @@ _save_viz('study-3-adaptive-chemotaxis', 'landscape', _render_one('', {}, RUNS_D
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `growing-population` | `pbg_autopoiesis.composites.growth-division` | 0 | supply_rate=2.0 |
+# | `growing-population` | `viva_autopoiesis.composites.growth-division` | 0 | supply_rate=2.0 |
 
 # ### Specification (process-bigraph) — load, inspect, edit
 #
 # Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
 
-# **Composite `pbg_autopoiesis.composites.growth-division`** — `spec_pbg_autopoiesis_composites_growth_division` (a plain, editable dict)
+# **Composite `viva_autopoiesis.composites.growth-division`** — `spec_viva_autopoiesis_composites_growth_division` (a plain, editable dict)
 
 from viva_superpowers.composite_spec import load_spec
-spec_pbg_autopoiesis_composites_growth_division = load_spec(REPO / 'pbg_autopoiesis/composites/growth-division.composite.yaml')
-describe_spec(spec_pbg_autopoiesis_composites_growth_division)
+spec_viva_autopoiesis_composites_growth_division = load_spec(REPO / 'viva_autopoiesis/composites/growth-division.composite.yaml')
+describe_spec(spec_viva_autopoiesis_composites_growth_division)
 
 # === Edit parameters for composite 'growth-division' ===
 # Each line is the spec's CURRENT value — change any, then run the Run cell
 # below. The spec is a plain dict, so you may also add or remove keys.
 
 # tunable parameters (filled into ${name} placeholders):
-spec_pbg_autopoiesis_composites_growth_division['parameters']['supply']['default'] = 0.55
-spec_pbg_autopoiesis_composites_growth_division['parameters']['seed']['default'] = 0
+spec_viva_autopoiesis_composites_growth_division['parameters']['supply']['default'] = 0.55
+spec_viva_autopoiesis_composites_growth_division['parameters']['seed']['default'] = 0
 
 # process 'growth'  (local:GrowthDivision)
-spec_pbg_autopoiesis_composites_growth_division['state']['growth']['interval'] = 1.0
-spec_pbg_autopoiesis_composites_growth_division['state']['growth']['config']['supply'] = '${supply}'
-spec_pbg_autopoiesis_composites_growth_division['state']['growth']['config']['seed'] = '${seed}'
+spec_viva_autopoiesis_composites_growth_division['state']['growth']['interval'] = 1.0
+spec_viva_autopoiesis_composites_growth_division['state']['growth']['config']['supply'] = '${supply}'
+spec_viva_autopoiesis_composites_growth_division['state']['growth']['config']['seed'] = '${seed}'
 
 # ### Run
 #
@@ -516,37 +516,37 @@ _save_viz('study-4-growth-division', 'heterogeneity', _render_one('', {}, RUNS_D
 #
 # | simulation | composite | steps | params |
 # | --- | --- | --- | --- |
-# | `adversarial-probes` | `pbg_autopoiesis.composites.membrane-metabolism-loop` | 0 | supply_rate=0.0 |
+# | `adversarial-probes` | `viva_autopoiesis.composites.membrane-metabolism-loop` | 0 | supply_rate=0.0 |
 
 # ### Specification (process-bigraph) — load, inspect, edit
 #
 # Each composite is a process-bigraph *document*: named processes (`_type: process`) bound to an `address`, wired by `inputs`/`outputs` ports over shared stores. For every composite below the first cell loads the spec into a plain **editable Python dict** and prints its structure; the second cell is a **control panel** listing every configuration value and per-process `interval` so you can tweak any of them. Your edits are read when the composite is built and run, in the **Run** section.
 
-# **Composite `pbg_autopoiesis.composites.membrane-metabolism-loop`** — `spec_pbg_autopoiesis_composites_membrane_metabolism_loop` (a plain, editable dict)
+# **Composite `viva_autopoiesis.composites.membrane-metabolism-loop`** — `spec_viva_autopoiesis_composites_membrane_metabolism_loop` (a plain, editable dict)
 
 from viva_superpowers.composite_spec import load_spec
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop = load_spec(REPO / 'pbg_autopoiesis/composites/membrane-metabolism-loop.composite.yaml')
-describe_spec(spec_pbg_autopoiesis_composites_membrane_metabolism_loop)
+spec_viva_autopoiesis_composites_membrane_metabolism_loop = load_spec(REPO / 'viva_autopoiesis/composites/membrane-metabolism-loop.composite.yaml')
+describe_spec(spec_viva_autopoiesis_composites_membrane_metabolism_loop)
 
 # === Edit parameters for composite 'membrane-metabolism-loop' ===
 # Each line is the spec's CURRENT value — change any, then run the Run cell
 # below. The spec is a plain dict, so you may also add or remove keys.
 
 # tunable parameters (filled into ${name} placeholders):
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['parameters']['supply_rate']['default'] = 2.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['parameters']['supply_rate']['default'] = 2.0
 
 # process 'supply'  (local:Supply)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['interval'] = 1.0
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['config']['rate'] = '${supply_rate}'
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['supply']['config']['rate'] = '${supply_rate}'
 
 # process 'metabolism'  (local:Metabolism)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['metabolism']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['metabolism']['interval'] = 1.0
 
 # process 'membrane'  (local:Membrane)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['membrane']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['membrane']['interval'] = 1.0
 
 # process 'boundary'  (local:Boundary)
-spec_pbg_autopoiesis_composites_membrane_metabolism_loop['state']['boundary']['interval'] = 1.0
+spec_viva_autopoiesis_composites_membrane_metabolism_loop['state']['boundary']['interval'] = 1.0
 
 # ### Run
 #
