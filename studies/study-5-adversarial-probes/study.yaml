@@ -31,7 +31,7 @@ pipeline_gate:
     diverges_from_authored: false
 baseline:
 - name: adversarial-probes
-  composite: pbg_autopoiesis.composites.membrane-metabolism-loop
+  composite: viva_autopoiesis.composites.membrane-metabolism-loop
   params: {supply_rate: 0.0}
 
 behavior_tests:

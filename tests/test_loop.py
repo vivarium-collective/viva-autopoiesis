@@ -3,8 +3,8 @@
 Run with a venv that has process-bigraph + bigraph-schema, e.g.:
     PYTHONPATH=. <pb-venv>/bin/python -m pytest tests/ -q
 """
-from pbg_autopoiesis.loop import build_loop, run_trajectory, closure_of_loop
-from pbg_autopoiesis.meter import operational_closure
+from viva_autopoiesis.loop import build_loop, run_trajectory, closure_of_loop
+from viva_autopoiesis.meter import operational_closure
 
 
 # --- the autopoiesis meter ------------------------------------------------
@@ -57,8 +57,8 @@ def test_precariousness_fed_beats_starved():
 def test_volume_couples_metabolism():
     """A smaller initial cell is more concentrated, so the bimolecular lipid
     step runs faster -- volume genuinely couples the loop (it is not a label)."""
-    from pbg_autopoiesis.processes import Metabolism
-    from pbg_autopoiesis.loop import _core
+    from viva_autopoiesis.processes import Metabolism
+    from viva_autopoiesis.loop import _core
     m = Metabolism({}, core=_core())
     # precursor low enough that the bimolecular rate (not the p/2 clamp) governs,
     # so the volume dependence is observable.

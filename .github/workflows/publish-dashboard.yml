@@ -21,7 +21,7 @@ on:
     paths:
       - 'investigations/**'
       - 'studies/**'
-      - 'pbg_autopoiesis/**'
+      - 'viva_autopoiesis/**'
       - 'pyproject.toml'
       - 'figures/**'
       - 'scripts/publish_dashboard.sh'

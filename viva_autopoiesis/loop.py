@@ -136,7 +136,7 @@ def closure_of_loop():
 
 def main():
     print("=" * 64)
-    print(" pbg-autopoiesis — increment 1: membrane/metabolism loop")
+    print(" viva-autopoiesis — increment 1: membrane/metabolism loop")
     print("=" * 64)
     print(report(closure_of_loop()))
     print()

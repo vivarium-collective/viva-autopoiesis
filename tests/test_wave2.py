@@ -6,8 +6,8 @@ flux accumulation, and the ``spine.invariant_status`` band-comparison logic.
 
     PYTHONPATH=. <pb-venv>/bin/python -m pytest tests/test_wave2.py -q
 """
-from pbg_autopoiesis.meter import semantic_closure, operational_closure, report
-from pbg_autopoiesis.loop import build_loop, run_trajectory
+from viva_autopoiesis.meter import semantic_closure, operational_closure, report
+from viva_autopoiesis.loop import build_loop, run_trajectory
 
 
 # --- C-SEM: semantic vs interface (syntactic) closure ---------------------
@@ -68,7 +68,7 @@ def test_run_trajectory_default_is_list():
 
 
 def test_semantic_closure_of_fed_loop():
-    from pbg_autopoiesis.loop import closure_of_loop
+    from viva_autopoiesis.loop import closure_of_loop
     closure = closure_of_loop()
     _vols, fluxes = run_trajectory(build_loop(supply_rate=2.0), steps=40,
                                    return_fluxes=True)
@@ -79,7 +79,7 @@ def test_semantic_closure_of_fed_loop():
 # --- C-INVAR: invariant-preservation band comparison ----------------------
 
 def test_invariant_status_preserved_strengthened_weakened_invalidated():
-    from pbg_autopoiesis.spine import invariant_status
+    from viva_autopoiesis.spine import invariant_status
 
     # "<" band (e.g. precariousness < 0.3): smaller value = stronger.
     band = {"op": "<", "value": 0.3}
@@ -97,7 +97,7 @@ def test_invariant_status_preserved_strengthened_weakened_invalidated():
 
 
 def test_invariant_status_range_band():
-    from pbg_autopoiesis.spine import invariant_status
+    from viva_autopoiesis.spine import invariant_status
     band = {"op": "range", "low": 0.0, "high": 10.0}
     assert invariant_status(band, 5.0, 5.0) == "preserved"
     assert invariant_status(band, 5.0, 11.0) == "invalidated"

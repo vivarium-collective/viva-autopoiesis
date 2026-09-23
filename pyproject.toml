@@ -1,5 +1,5 @@
 [project]
-name = "pbg-autopoiesis"
+name = "viva-autopoiesis"
 version = "0.1.0"
 description = "A whole-cell model built as a precarious, self-bounding network via composition of existing parts."
 readme = "README.md"
@@ -49,4 +49,4 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["pbg_autopoiesis"]
+packages = ["viva_autopoiesis"]

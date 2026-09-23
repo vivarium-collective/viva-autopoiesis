@@ -1,4 +1,4 @@
-# pbg-autopoiesis
+# viva-autopoiesis
 
 <!-- BEGIN dashboard -->
 > ## 📊 [**Live dashboard →**](https://vivarium-collective.github.io/viva-autopoiesis/dashboard/)
@@ -25,7 +25,7 @@ In composition terms, operational closure is a computable condition over a typed
 autopoietic_gap(S) = requires(S) \ provides(S) \ boundary
 ```
 
-For a composed set of processes `S`, the gap is everything the network needs but cannot make itself, minus what we declare as environmental input. **The system is operationally closed — a cell — when that gap is empty.** Building a whole cell = driving the gap set down to `{nutrients, energy}`, one increment at a time. The catalog is not just an inventory; it is an **autopoiesis meter** (`pbg_autopoiesis/meter.py`).
+For a composed set of processes `S`, the gap is everything the network needs but cannot make itself, minus what we declare as environmental input. **The system is operationally closed — a cell — when that gap is empty.** Building a whole cell = driving the gap set down to `{nutrients, energy}`, one increment at a time. The catalog is not just an inventory; it is an **autopoiesis meter** (`viva_autopoiesis/meter.py`).
 
 ## The crux: the membrane is the part the library is missing
 
@@ -66,7 +66,7 @@ Each increment reports its **closure metric**: `self-produces N of M required co
 ## Layout
 
 ```
-pbg_autopoiesis/
+viva_autopoiesis/
   processes.py   # Supply, Metabolism, Membrane (Process) + Boundary (Step, derives volume)
   loop.py        # builds the membrane/metabolism composite; fed-vs-starved runner
   meter.py       # the autopoiesis meter — operational-closure / gap over process interfaces
@@ -75,8 +75,8 @@ tests/
 docs/            # the design specs this is grown from (adapters; type-directed composition)
 ```
 
-Run the demo: `python -m pbg_autopoiesis.loop`  ·  Tests: `pytest -q`  ·
-Visual gallery: `python -m pbg_autopoiesis.viz` → `figures/index.html`
+Run the demo: `python -m viva_autopoiesis.loop`  ·  Tests: `pytest -q`  ·
+Visual gallery: `python -m viva_autopoiesis.viz` → `figures/index.html`
 
 ## This is an investigation
 
@@ -92,12 +92,12 @@ closure CLOSED, the identity precarious-but-maintained.
 
 This repo is a **dashboard workspace** (`workspace.yaml` + `investigations/` + `studies/` +
 the `membrane-metabolism-loop` composite). Study 1's verdict is **computed by the autopoiesis
-meter and written into the study** by `pbg_autopoiesis/spine.py` — the schema framework
+meter and written into the study** by `viva_autopoiesis/spine.py` — the schema framework
 literally driving the spine: the meter produces the measures (closure gap, precariousness
 ratio, fed growth), the study's authored `pass_if` bands judge them, and the framework's own
 `study_verdict.roll_up_verdict` → **passed** and `investigation_status.roll_up_acceptance` →
 **passing** (3/3 criteria) read the result. The six figures are the study's report.
 
 ```
-PYTHONPATH=. <pb-venv>/bin/python -m pbg_autopoiesis.spine   # recompute + write the verdict
+PYTHONPATH=. <pb-venv>/bin/python -m viva_autopoiesis.spine   # recompute + write the verdict
 ```

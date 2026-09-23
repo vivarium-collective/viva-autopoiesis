@@ -40,7 +40,7 @@ pipeline_gate:
     diverges_from_authored: false
 baseline:
 - name: chemotactic-agent
-  composite: pbg_autopoiesis.composites.adaptive-chemotaxis
+  composite: viva_autopoiesis.composites.adaptive-chemotaxis
   params:
     supply_rate: 2.0
 
@@ -98,7 +98,7 @@ behavior_tests:
         sense-making, not a calibrated or literature value.
   requires_simulation: chemotactic-agent
 
-# runs + findings + gate_evaluator are computed + written by pbg_autopoiesis.spine.sync_study3()
+# runs + findings + gate_evaluator are computed + written by viva_autopoiesis.spine.sync_study3()
 runs:
 - name: chemotaxis-meter
   status: completed
