@@ -27,7 +27,7 @@ test = ["pytest"]
 # `dev` carries the dashboard so `uv sync --extra dev` (the publish CI step)
 # provides the static-bundle builder + headless report server.
 dev = [
-    "vivarium-workbench @ git+https://github.com/vivarium-collective/vivarium-dashboard.git@main",
+    "vivarium-workbench @ git+https://github.com/vivarium-collective/vivarium-workbench.git@main",
     "matplotlib",
 ]
 
