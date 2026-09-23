@@ -26,7 +26,7 @@ pipeline_gate:
   proceed_condition: |
     Operational closure CLOSED (gap = ∅, boundary = {nutrient}) AND precariousness holds
     (the self-produced boundary collapses when nutrient is withdrawn).
-  # gate_evaluator is COMPUTED + written by the autopoiesis meter (pbg_autopoiesis.spine)
+  # gate_evaluator is COMPUTED + written by the autopoiesis meter (viva_autopoiesis.spine)
 
   gate_evaluator:
     result: passed
@@ -35,7 +35,7 @@ pipeline_gate:
     diverges_from_authored: false
 baseline:
 - name: membrane-metabolism-loop
-  composite: pbg_autopoiesis.composites.membrane-metabolism-loop
+  composite: viva_autopoiesis.composites.membrane-metabolism-loop
   params:
     supply_rate: 2.0
 
@@ -116,7 +116,7 @@ behavior_tests:
   requires_simulation: membrane-metabolism-loop
 
 # runs + findings + pipeline_gate.gate_evaluator are COMPUTED and written by
-# pbg_autopoiesis.spine.sync() — the schema framework driving the spine.
+# viva_autopoiesis.spine.sync() — the schema framework driving the spine.
 runs:
 - name: autopoiesis-meter
   status: completed

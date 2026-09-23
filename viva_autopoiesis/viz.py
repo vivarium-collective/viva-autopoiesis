@@ -4,7 +4,7 @@ Generates a gallery of detailed figures of the membrane/metabolism co-constructi
 loop: its precariousness, its self-maintained dynamics, the emergent boundary,
 the volume coupling, the operational-closure cycle, and the phase portrait.
 
-    PYTHONPATH=. <pb-venv>/bin/python -m pbg_autopoiesis.viz
+    PYTHONPATH=. <pb-venv>/bin/python -m viva_autopoiesis.viz
         -> writes figures/*.png + figures/index.html
 """
 from __future__ import annotations
@@ -126,7 +126,7 @@ def fig_emergent_boundary(fed):
 def fig_volume_coupling():
     fig, ax = plt.subplots(figsize=(7.5, 4.4))
     vols = np.linspace(0.5, 20, 200)
-    m = P.Metabolism({}, core=__import__("pbg_autopoiesis.loop", fromlist=["_core"])._core())
+    m = P.Metabolism({}, core=__import__("viva_autopoiesis.loop", fromlist=["_core"])._core())
     rate = [m.update({"nutrient": 0, "precursor": 8.0, "lipid": 0, "volume": v}, 1.0)["lipid"]
             for v in vols]
     ax.plot(vols, rate, color=ACCENT, lw=2.8)
@@ -420,7 +420,7 @@ def _write_gallery():
     cards = "\n".join(
         f'<figure><img src="{n}.png" alt="{t}"><figcaption><b>{t}.</b> {c}</figcaption></figure>'
         for n, t, c in GALLERY)
-    html = f"""<!doctype html><meta charset=utf-8><title>pbg-autopoiesis — increment 1</title>
+    html = f"""<!doctype html><meta charset=utf-8><title>viva-autopoiesis — increment 1</title>
 <style>
  body{{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#1c2330;max-width:980px;
   margin:0 auto;padding:32px 24px;background:#fbfcfe}}
@@ -432,7 +432,7 @@ def _write_gallery():
  figcaption{{padding:12px 18px;font-size:13.5px;color:#2b3950;line-height:1.5;border-top:1px solid #eef2f7}}
  figcaption b{{color:#11355e}}
 </style>
-<h1>pbg-autopoiesis &middot; increment 1</h1>
+<h1>viva-autopoiesis &middot; increment 1</h1>
 <p class=sub>The minimal membrane/metabolism co-construction loop — a precarious, self-bounding identity that emerges from the molecular domain.</p>
 {cards}
 """

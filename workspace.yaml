@@ -1,7 +1,7 @@
 schema_version: 2
 name: autopoiesis
 created: '2026-06-12'
-package_path: pbg_autopoiesis        # importable package + composites/ dir
+package_path: viva_autopoiesis        # importable package + composites/ dir
 description: >-
   A whole-cell model built as a precarious, self-bounding network via composition —
   autopoiesis through the biological schema framework. Each increment is a study;

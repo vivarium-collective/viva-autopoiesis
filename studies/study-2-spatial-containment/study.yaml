@@ -37,7 +37,7 @@ pipeline_gate:
     diverges_from_authored: false
 baseline:
 - name: spatial-containment
-  composite: pbg_autopoiesis.composites.spatial-containment
+  composite: viva_autopoiesis.composites.spatial-containment
   params:
     supply_rate: 2.0
 
@@ -119,7 +119,7 @@ composition_commitment:
   alternatives_excluded:
   - no-membrane
 
-# runs + findings + gate_evaluator are computed + written by pbg_autopoiesis.spine.sync_study2()
+# runs + findings + gate_evaluator are computed + written by viva_autopoiesis.spine.sync_study2()
 runs:
 - name: containment-meter
   status: completed

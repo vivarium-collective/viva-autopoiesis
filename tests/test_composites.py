@@ -11,12 +11,12 @@ import numpy as np
 import pytest
 import yaml
 
-from pbg_autopoiesis.core import build_core
-from pbg_autopoiesis import spatial, chemotaxis, growth
-from pbg_autopoiesis import processes_spatial, processes_chemotaxis, processes_growth
+from viva_autopoiesis.core import build_core
+from viva_autopoiesis import spatial, chemotaxis, growth
+from viva_autopoiesis import processes_spatial, processes_chemotaxis, processes_growth
 
 WS = Path(__file__).resolve().parent.parent
-COMPOSITES = WS / "pbg_autopoiesis" / "composites"
+COMPOSITES = WS / "viva_autopoiesis" / "composites"
 
 
 # --- the new processes resolve as real registered composite nodes ----------
@@ -30,7 +30,7 @@ def test_process_registers(name):
 @pytest.mark.parametrize("slug", ["spatial-containment", "adaptive-chemotaxis",
                                   "growth-division"])
 def test_composite_doc_name_matches_slug(slug):
-    """The dashboard discovers ``pbg_autopoiesis.composites.<slug>`` from the
+    """The dashboard discovers ``viva_autopoiesis.composites.<slug>`` from the
     .composite.yaml — its ``name`` MUST equal the slug the study references."""
     doc = yaml.safe_load((COMPOSITES / f"{slug}.composite.yaml").read_text(encoding="utf-8"))
     assert doc["name"] == slug

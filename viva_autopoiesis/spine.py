@@ -9,7 +9,7 @@ The result is a dashboard study whose verdict the schema framework *computed*. T
 the same authored-band / computed-measure split as the real spine, with the autopoiesis
 meter as the measure source.
 
-    PYTHONPATH=. <pb-venv>/bin/python -m pbg_autopoiesis.spine
+    PYTHONPATH=. <pb-venv>/bin/python -m viva_autopoiesis.spine
 """
 from __future__ import annotations
 
