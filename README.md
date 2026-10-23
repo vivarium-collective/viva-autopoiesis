@@ -13,11 +13,6 @@
 **[Open the read-only workbench](https://vivarium-collective.github.io/viva-autopoiesis/workbench/)** to browse every composite, study, and result in your browser — or run it locally (below).
 <!-- END:dashboard -->
 
-<!-- BEGIN dashboard -->
-> ## 📊 [**Live dashboard →**](https://vivarium-collective.github.io/viva-autopoiesis/workbench/)
-> Browse every investigation & study interactively, or read the [published investigation reports](https://vivarium-collective.github.io/viva-autopoiesis/). Auto-published from `main` on every merge.
-<!-- END dashboard -->
-
 **A whole-cell model built as a precarious, self-bounding network — assembled increment by increment from composable parts, and measured by how much of itself it produces.**
 
 This is not a model of a cell *in* a container. It is an attempt to compose a cell that **produces its own container** — the persistence of a precarious identity that emerges, bottom-up, from the molecular domain.
