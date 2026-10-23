@@ -19,7 +19,7 @@ dependencies = [
     "viva-superpowers",
     # loop.py's external_membrane / injected_node hooks use the framework's
     # reusable Intervention process (register_intervention / intervention_node).
-    "pbg-basic-processes",
+    "viva-basic-processes",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +37,7 @@ dev = [
 # with "conflicting URLs for viva-superpowers". Bump in lockstep with the
 # workbench when it moves the rev.
 viva-superpowers = { git = "https://github.com/vivarium-collective/viva-superpowers.git", branch = "main" }
-pbg-basic-processes = { git = "https://github.com/vivarium-collective/pbg-basic-processes.git", branch = "main" }
+viva-basic-processes = { git = "https://github.com/vivarium-collective/viva-basic-processes.git", branch = "main" }
 
 [build-system]
 requires = ["hatchling"]
